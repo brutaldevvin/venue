@@ -4,5 +4,7 @@ module.exports = {
   // Standalone traces only the files actually imported, so the runtime image does not need
   // the pnpm store or the workspace's dev dependencies.
   output: 'standalone',
-  outputFileTracingRoot: require('node:path').join(__dirname, '../../'),
+  experimental: {
+    outputFileTracingRoot: require('node:path').join(__dirname, '../../'),
+  },
 }

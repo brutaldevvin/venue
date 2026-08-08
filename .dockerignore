@@ -6,8 +6,9 @@ contracts/lib
 contracts/out
 contracts/cache
 .git
-.env
-.env.*
+**/.env
+**/.env.*
+**/.env.local
 .venue-makers.json
 logo.PNG
 brand
