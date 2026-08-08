@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Self-hosted, `font-display: swap`. No CDN at runtime - a font that fails mid-demo costs
+   more than the download. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/inter-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/inter-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/jbmono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/jbmono-500.woff2') format('woff2');
+}
+
+:root {
+  --indigo: #1e1ebe;
+  --indigo-deep: #16169a;
+  --ground: #f5f5fa;
+  --card: #ffffff;
+  --on-indigo: #ffffff;
+  --body: #4a4a7a;
+  --muted: #8a8ab5;
+  --line: #d9d9ec;
+  --bound: #e97366;
+}
+
+body {
+  background: var(--ground);
+  color: var(--body);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Motion means state changed. Flashes 400ms, row entries 300ms, everything else instant. */
+@keyframes bind-flash {
+  0% { background-color: rgba(233, 115, 102, 0.12); }
+  100% { background-color: var(--ground); }
+}
+.flash-bound { animation: bind-flash 400ms ease-out; }
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
+}
+.row-in { animation: row-in 300ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flash-bound, .row-in { animation: none; }
+}
