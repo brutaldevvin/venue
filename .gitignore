@@ -18,7 +18,9 @@ contracts/lib/
 # logo.PNG is the source lockup and is committed; brand/ and the console's public/ assets
 # are derived from it by scripts/build-brand.py.
 
-# Internal planning notes, not part of the deliverable.
+# Internal planning notes and the working engineering log, not part of the deliverable.
+# EVIDENCE-RUN.md is the generated, shippable record and is committed.
 BUILD-VENUE.md
 VENUE.md
 venue-design.md
+EVIDENCE.md
