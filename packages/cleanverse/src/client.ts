@@ -129,6 +129,34 @@ export class CleanverseClient {
     }
   }
 
+  /**
+   * Freeze (2) or reactivate (1) an A-Pass. Body is AES-encrypted, and it is a write, so it
+   * is never retried: re-applying a state change is worse than reporting a timeout.
+   *
+   * This is what a real credential lapse looks like. Revoking a credential in a contract we
+   * control would prove nothing; freezing it at the registry is the event a venue would
+   * actually receive, and the watcher reacts to it identically.
+   */
+  updateStatus(input: {
+    wallet: { chain: string; address: string }
+    status: 1 | 2
+    customerId?: string
+    cvRecordId?: string
+    blacklistReason?: string
+  }): Promise<CvResponse> {
+    return this.cooperate(
+      'update_status',
+      {
+        wallet: input.wallet,
+        status: String(input.status),
+        customerId: input.customerId,
+        cvRecordId: input.cvRecordId,
+        blacklistReason: input.blacklistReason,
+      },
+      { encrypted: true },
+    )
+  }
+
   // ---- CVA: issuance and registration ---------------------------------------
 
   /** Method A - issue a new CVA. Body must be AES-encrypted. Write, so no retry. */

@@ -175,10 +175,18 @@ describe('the signature case - a better bid passed over for a worse one', () => 
         [incumbent, { ...cred, address: incumbent }],
         [newcomer, { ...cred, address: newcomer }],
       ]),
+      // Cash state matters now: a bid is only live if the maker can actually pay for it,
+      // which is what stops the matcher forming a pair that reverts at settlement.
       makerStates: new Map([
-        [seller, { position: 1000n, allowance: 10_000n }],
-        [incumbent, { position: 50n, allowance: 10_000n }],
-        [newcomer, { position: 0n, allowance: 10_000n }],
+        [seller, { position: 1000n, allowance: 10_000n, cashBalance: 0n, cashAllowance: 0n }],
+        [
+          incumbent,
+          { position: 50n, allowance: 10_000n, cashBalance: 5_000_000n, cashAllowance: 5_000_000n },
+        ],
+        [
+          newcomer,
+          { position: 0n, allowance: 10_000n, cashBalance: 5_000_000n, cashAllowance: 5_000_000n },
+        ],
       ]),
       rules: [],
       // The cap is full: 99 of 99.

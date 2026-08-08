@@ -70,4 +70,21 @@ export async function verificationLink(who: Address, asset: Address): Promise<st
   return undefined
 }
 
+/**
+ * Freeze or reactivate a wallet's A-Pass at the registry.
+ *
+ * A lapse is a CVI event, not a contract edit. Freezing here is what a venue would actually
+ * be told, and the cached credential is dropped immediately so the next projection reads the
+ * new state rather than waiting out the TTL.
+ */
+export async function setApassStatus(who: Address, status: 1 | 2): Promise<boolean> {
+  const res = await client().updateStatus({
+    wallet: { chain: CHAIN, address: who },
+    status,
+    blacklistReason: status === 2 ? 'demo: credential lapsed' : undefined,
+  })
+  store.resolver.invalidate(who)
+  return res.code === '0000'
+}
+
 export { toCredential }

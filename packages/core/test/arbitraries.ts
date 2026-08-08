@@ -104,6 +104,8 @@ function satisfying(r: RuleV2): fc.Arbitrary<Omit<Credential, 'address'>> {
 export const viewerStateArb: fc.Arbitrary<ViewerState> = fc.record({
   position: fc.bigInt({ min: 0n, max: 200n }),
   allowance: fc.bigInt({ min: 0n, max: 100_000n }),
+  cashBalance: fc.bigInt({ min: 0n, max: 2_000_000n }),
+  cashAllowance: fc.bigInt({ min: 0n, max: 2_000_000n }),
 })
 
 export const limitsArb: fc.Arbitrary<VenueLimits> = fc
@@ -152,7 +154,12 @@ export const bookArb = rulesArb.chain((rules) => {
       for (const o of orders) {
         if (!makerCredentials.has(o.maker)) makerCredentials.set(o.maker, null)
         if (!makerStates.has(o.maker)) {
-          makerStates.set(o.maker, { position: 0n, allowance: 100_000n })
+          makerStates.set(o.maker, {
+            position: 200n,
+            allowance: 100_000n,
+            cashBalance: 2_000_000n,
+            cashAllowance: 2_000_000n,
+          })
         }
       }
       return {

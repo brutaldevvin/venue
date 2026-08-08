@@ -99,8 +99,15 @@ export interface VenueLimits {
 export interface ViewerState {
   /** Units of the security this viewer already holds. */
   position: bigint
-  /** ERC-20 allowance granted to the settlement contract, per D7. */
+  /** Security allowance granted to the settlement contract. */
   allowance: bigint
+  /**
+   * The cash side, for validating bids. Optional because not every caller tracks it, but
+   * without it a bid cannot be checked for funding at all: comparing a cash notional against
+   * a security allowance is meaningless.
+   */
+  cashBalance?: bigint
+  cashAllowance?: bigint
 }
 
 /** Why an order is not visible or not matchable. Drives the rule strip and the tape. */

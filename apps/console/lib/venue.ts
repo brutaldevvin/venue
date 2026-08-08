@@ -13,7 +13,7 @@ import {
   publicClient,
   settlementAbi,
 } from './chain'
-import { resolveCredential, verificationLink } from './cvi'
+import { resolveCredential, setApassStatus, verificationLink } from './cvi'
 import { signOrder, verifyOrder } from './orders'
 import { agentMandate, mandateVerifier } from './mandate'
 import { travelRuleForFill } from './travelrule'
@@ -182,7 +182,7 @@ async function readMirroredCredential(who: Address): Promise<{ tier: number; sub
 }
 
 async function readViewerState(who: Address): Promise<ViewerState> {
-  const [position, allowance] = await Promise.all([
+  const [position, allowance, cashBalance, cashAllowance] = await Promise.all([
     publicClient.readContract({
       address: addresses.security,
       abi: listedAbi,
@@ -195,8 +195,25 @@ async function readViewerState(who: Address): Promise<ViewerState> {
       functionName: 'allowance',
       args: [who, addresses.settlement],
     }),
+    publicClient.readContract({
+      address: addresses.cash,
+      abi: listedAbi,
+      functionName: 'balanceOf',
+      args: [who],
+    }),
+    publicClient.readContract({
+      address: addresses.cash,
+      abi: listedAbi,
+      functionName: 'allowance',
+      args: [who, addresses.settlement],
+    }),
   ])
-  return { position: position as bigint, allowance: allowance as bigint }
+  return {
+    position: position as bigint,
+    allowance: allowance as bigint,
+    cashBalance: cashBalance as bigint,
+    cashAllowance: cashAllowance as bigint,
+  }
 }
 
 /** Seed a two-sided book, signed by the market makers. */
@@ -207,13 +224,17 @@ async function seedBook(): Promise<void> {
   if (keys.length === 0) return
 
   const expiry = Math.floor(Date.now() / 1000) + 86_400
+  // Sizes are bounded by the cash leg. aUSDC has 6 decimals and each maker holds 1.0, so a
+  // bid at ~10,000 can be at most ~95 units before it is genuinely unfunded. The ladder was
+  // originally sized for a cash token we minted freely; against a real asset it has to fit
+  // real balances.
   const ladder: Array<['bid' | 'ask', bigint, bigint]> = [
-    ['ask', 10_250n, 400n],
-    ['ask', 10_200n, 250n],
-    ['ask', 10_150n, 120n],
-    ['bid', 10_100n, 180n],
-    ['bid', 10_050n, 300n],
-    ['bid', 10_000n, 500n],
+    ['ask', 10_250n, 40n],
+    ['ask', 10_200n, 25n],
+    ['ask', 10_150n, 12n],
+    ['bid', 10_100n, 18n],
+    ['bid', 10_050n, 30n],
+    ['bid', 10_000n, 50n],
   ]
 
   const made: Order[] = []
@@ -326,6 +347,17 @@ export async function resetDemo(): Promise<{ restored: number }> {
     ...makerKeys().map((k) => k.address),
   ]
 
+  // Reactivate anything a previous run froze, so the demo is repeatable. This is the same
+  // registry call the lapse uses, in the other direction.
+  let reactivated = 0
+  for (const who of parties) {
+    const c = await resolveCredential(who)
+    if (c !== null && c.status !== 1) {
+      if (await setApassStatus(who, 1)) reactivated++
+    }
+  }
+  if (reactivated > 0) await new Promise((r) => setTimeout(r, 2000))
+
   let restored = 0
   for (const who of parties) {
     const live = await resolveCredential(who)
@@ -340,6 +372,57 @@ export async function resetDemo(): Promise<{ restored: number }> {
     })
     await publicClient.waitForTransactionReceipt({ hash })
     restored++
+  }
+
+  // Cash is a real asset now, so it drains as the demo settles. Top participants back up so
+  // the book does not quietly hollow out for whoever presses reset next: an underfunded bid
+  // is correctly refused, which looks like a broken demo rather than a working rule.
+  const erc20 = [
+    {
+      type: 'function',
+      name: 'balanceOf',
+      stateMutability: 'view',
+      inputs: [{ type: 'address' }],
+      outputs: [{ type: 'uint256' }],
+    },
+    {
+      type: 'function',
+      name: 'transfer',
+      stateMutability: 'nonpayable',
+      inputs: [{ type: 'address' }, { type: 'uint256' }],
+      outputs: [{ type: 'bool' }],
+    },
+  ] as const
+  const FLOOR = 1_000_000n
+  const ownerCash = (await publicClient.readContract({
+    address: addresses.cash,
+    abi: erc20,
+    functionName: 'balanceOf',
+    args: [owner.address],
+  })) as bigint
+  let spare = ownerCash > FLOOR ? ownerCash - FLOOR : 0n
+  for (const who of parties) {
+    if (spare === 0n) break
+    // The cash leg is a real CVA and enforces compliance: sending it to a wallet with no
+    // A-Pass reverts. Viewer C is exactly that wallet, and it is not a market participant,
+    // so it is skipped rather than allowed to fail the whole reset.
+    if ((await resolveCredential(who)) === null) continue
+    const bal = (await publicClient.readContract({
+      address: addresses.cash,
+      abi: erc20,
+      functionName: 'balanceOf',
+      args: [who],
+    })) as bigint
+    if (bal >= FLOOR) continue
+    const top = FLOOR - bal > spare ? spare : FLOOR - bal
+    const h = await wallet.writeContract({
+      address: addresses.cash,
+      abi: erc20,
+      functionName: 'transfer',
+      args: [who, top],
+    })
+    await publicClient.waitForTransactionReceipt({ hash: h })
+    spare -= top
   }
 
   // Clear the book only once credentials are back. The other order races the 1s poll: it
@@ -675,46 +758,29 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
 export async function lapseMaker(): Promise<{
   maker: Address | null
   cancelled: number
-  txHash?: `0x${string}`
+  frozen?: boolean
 }> {
   await seedBook()
   const target = store.orders.find((o) => o.side === 'ask')
   if (!target) return { maker: null, cancelled: 0 }
 
-  const raw = process.env.W_PKEY ?? ''
-  const owner = privateKeyToAccount((raw.startsWith('0x') ? raw : `0x${raw}`) as `0x${string}`)
-  const wallet = createWalletClient({
-    account: owner,
-    chain: monadTestnet,
-    transport: http(process.env.MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz'),
-  })
-  const hash = await wallet.writeContract({
-    address: addresses.policy,
-    abi: [
-      {
-        type: 'function',
-        name: 'clearCredential',
-        stateMutability: 'nonpayable',
-        inputs: [{ name: 'holder', type: 'address' }],
-        outputs: [],
-      },
-    ] as const,
-    functionName: 'clearCredential',
-    args: [target.maker],
-  })
-  await publicClient.waitForTransactionReceipt({ hash })
+  // Freeze the maker's A-Pass at the registry. Credentials are resolved from CVI, so this
+  // is the event the watcher actually observes; editing our own contract would no longer
+  // change what the projection sees.
+  const frozen = await setApassStatus(target.maker, 2)
 
   // A receipt does not guarantee the next eth_call sees the new state - reads can land on a
   // node that has not caught up, and the sweep then finds a live credential and cancels
   // nothing. Confirm the revocation is visible before sweeping, so the demo never silently
   // does nothing. The periodic sweep would catch it eventually either way.
   for (let i = 0; i < 20; i++) {
-    if ((await readCredential(target.maker)) === null) break
+    const c = await readCredential(target.maker)
+    if (c === null || c.status !== 1) break
     await new Promise((r) => setTimeout(r, 250))
   }
 
   // Sweep immediately rather than waiting for the next tick, so the demo is responsive.
   // That the watcher owns the cancellation is what makes this a watcher and not a button.
   const { cancelled } = await ensureWatching().sweep()
-  return { maker: target.maker, cancelled, txHash: hash }
+  return { maker: target.maker, cancelled, frozen }
 }

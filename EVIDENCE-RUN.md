@@ -31,7 +31,7 @@ wallets.
 | [B] verified, lower tier | sub-tier 9 | [`0x03681955065AF6EA51660dd63e7634fd0dE4d0a8`](https://testnet.monadscan.com/address/0x03681955065AF6EA51660dd63e7634fd0dE4d0a8) | 0 | 0 | subTier >= 70 |
 | [C] unverified | sub-tier none | [`0x9c2795FbFdAd515504112234bf53A4F6e4b841Ce`](https://testnet.monadscan.com/address/0x9c2795FbFdAd515504112234bf53A4F6e4b841Ce) | 0 | 0 | no verified identity |
 
-Projection latency: **773ms** for all three viewers.
+Projection latency: **1086ms** for all three viewers.
 
 ## Beat 2 - the holder cap binds
 
@@ -41,14 +41,14 @@ The matcher formed 1 match and passed over 1 bid.
 
 ## Beat 3 - a credential lapses
 
-Credential revoked for [`0xa9b2A75733e14e1bFDc0753799f8BdeAf77e35B8`](https://testnet.monadscan.com/address/0xa9b2A75733e14e1bFDc0753799f8BdeAf77e35B8); the watcher cancelled 0 resting order(s).
-Revocation: [`0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a`](https://testnet.monadscan.com/tx/0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a)
+Credential revoked for [`0xa9b2A75733e14e1bFDc0753799f8BdeAf77e35B8`](https://testnet.monadscan.com/address/0xa9b2A75733e14e1bFDc0753799f8BdeAf77e35B8); the watcher cancelled 2 resting order(s).
 
+- `2 orders withdrawn` - reason: `status 2`
 
 ## Beat 4 - delivery-versus-payment settles
 
 - `10 @ 10150 · both legs CVA`
-  - transaction: [`0x2d902a562d4cb7de2e107653d59676b7f553a94b1300546fd9a5bb7cf4b2e562`](https://testnet.monadscan.com/tx/0x2d902a562d4cb7de2e107653d59676b7f553a94b1300546fd9a5bb7cf4b2e562)
+  - transaction: [`0x133d7ffd82299c45fe59b24b375e1b80c91ddfaa21c1f250e223dd44b9b2d498`](https://testnet.monadscan.com/tx/0x133d7ffd82299c45fe59b24b375e1b80c91ddfaa21c1f250e223dd44b9b2d498)
   - Travel Rule (security): unavailable, `[TR_001]Transaction not found. Unable to generate report.`
   - Travel Rule (cash): unavailable, `[TR_001]Transaction not found. Unable to generate report.`
 
@@ -56,8 +56,7 @@ Revocation: [`0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a
 
 | Transaction | Block | Gas | Status |
 |---|---|---|---|
-| [`0x2d902a562d4cb7de2e107653d59676b7f553a94b1300546fd9a5bb7cf4b2e562`](https://testnet.monadscan.com/tx/0x2d902a562d4cb7de2e107653d59676b7f553a94b1300546fd9a5bb7cf4b2e562) | 52028773 | 483260 | success |
-| [`0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a`](https://testnet.monadscan.com/tx/0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a) | 52028785 | 52915 | success |
+| [`0x133d7ffd82299c45fe59b24b375e1b80c91ddfaa21c1f250e223dd44b9b2d498`](https://testnet.monadscan.com/tx/0x133d7ffd82299c45fe59b24b375e1b80c91ddfaa21c1f250e223dd44b9b2d498) | 52032042 | 483260 | success |
 
 Zero reverts across the run: every refusal was formed off-chain and moved no value.
 

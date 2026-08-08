@@ -46,11 +46,23 @@ export function orderLive(order: Order, book: BookState): boolean {
   const maker = book.makerCredentials.get(order.maker) ?? null
   if (!eligible(maker, book.rules, book.now)) return false
 
-  // D7: a resting order is backed by an approval to the settlement contract.
+  // A resting order is backed by an approval to the settlement contract, and by the assets
+  // to honour it. Checking the approval alone lets a maker offer securities they do not
+  // hold: the pair forms, and settlement reverts with an insufficient balance. That is the
+  // one way the matcher can cause a failed settlement, so both sides are checked.
   const state = book.makerStates.get(order.maker)
   if (state === undefined) return false
-  const required = order.side === 'ask' ? order.qty : order.price * order.qty
-  return state.allowance >= required
+
+  if (order.side === 'ask') {
+    return state.position >= order.qty && state.allowance >= order.qty
+  }
+
+  // A bid is funded from the cash leg. Where the caller does not track cash, the order is
+  // treated as unfunded rather than assumed good, because guessing here is what produces a
+  // revert at settlement.
+  const notional = order.price * order.qty
+  if (state.cashBalance === undefined || state.cashAllowance === undefined) return false
+  return state.cashBalance >= notional && state.cashAllowance >= notional
 }
 
 /** The listing-level check (D5, first layer): does this viewer see the asset at all? */
