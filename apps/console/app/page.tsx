@@ -635,12 +635,38 @@ function Proofs({ state }: { state: State | null }) {
           </div>
         ))}
       </div>
+      <div className="mt-3 font-mono text-[11px] text-muted">
+        check it directly:{' '}
+        <a href="/api/health" target="_blank" rel="noreferrer" className="text-indigo hover:underline">
+          /api/health
+        </a>
+        {' · '}
+        <a href="/api/state" target="_blank" rel="noreferrer" className="text-indigo hover:underline">
+          /api/state
+        </a>
+        {' · '}
+        <a
+          href="https://github.com/brutaldevvin/venue"
+          target="_blank"
+          rel="noreferrer"
+          className="text-indigo hover:underline"
+        >
+          source
+        </a>
+        <span className="ml-2">
+          health reports the live Monad block, the registry read for all three identities, and
+          that the cash leg is Cleanverse aUSDC.
+        </span>
+      </div>
+
       <p className="mt-3 max-w-[760px] font-mono text-[11px] leading-[1.6] text-muted">
-        Settlement runs against our own policy so the demo can set three credentials on one
-        asset. The two credentialed sandbox wallets are identical, so the contrast could not
-        have come from them. The deployed Cleanverse CCP policy at{' '}
-        <AddressLink address={p.ccpPolicy} explorer={p.explorer} /> exposes the same interface,
-        and the policy is a constructor argument, so the same bytecode runs against it.
+        Credentials are real A-Passes read live from the Cleanverse registry, and the cash leg
+        is Cleanverse aUSDC itself. The gate is our own instance of the documented
+        IATokenPolicy because the Cleanverse validator at{' '}
+        <AddressLink address={p.ccpPolicy} explorer={p.explorer} /> does not expose
+        canTransfer: extracting all 98 selectors from its implementation shows getRulesV2
+        present and canTransfer absent. Its sub-tiers mirror the registry, and the policy is a
+        constructor argument, so the same bytecode repoints with no code change.
       </p>
     </section>
   )

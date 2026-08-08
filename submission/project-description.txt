@@ -1,0 +1,11 @@
+Venue is the compliant secondary market for real-world assets: an order book where Cleanverse Verified Identity (CVI) sets the liquidity you can see, and Cleanverse Verified Assets (CVA) settle both legs.
+
+CLEANVERSE CAPABILITIES USED: CVI, CVA, CCP Protocol, API/SDK. Chain: Monad.
+
+THE PROBLEM: Tokenizing a real-world asset is solved. Selling one is not. Private credit and fund shares sit untradeable: a trade needs a counterparty whose eligibility you can verify, and no venue can. Venues let anyone order then revert - a reverted transfer is a break, a failed settlement a fine.
+
+THE SOLUTION: Venue makes eligibility a property of market microstructure, not a post-hoc check. The rule set shapes the book instead of gating the transfer. The book is projected per viewer against the live Cleanverse CVI registry; the CCP check runs off-chain at match formation, so ineligible pairs never form and refusals cost no gas. Settlement re-verifies on-chain: an operator can hide liquidity, never cause a bad trade.
+
+BUILT AND RUNNING on Monad testnet: an eligibility-projected book, a cap-aware matcher, a non-custodial DvP Settlement at 0xea5e891232850b6d3b8822e9883ae81586351f4c, a watcher, an EIP-191 agent, a 3-pane console. Cash leg: Cleanverse aUSDC itself. Security: a registered CVA. Credentials: real A-Passes via the Cleanverse API. 23 Foundry tests, 60,000 property cases and a differential that settles on-chain every pair the matcher forms; each caught real bugs.
+
+THE DEMO: one asset, three Cleanverse CVI states, three books: full depth, empty, unverified with a verify link. A holder cap binds and a better bid is passed over for a worse one, the rule named in the tape: price-time priority violated by compliance, deliberately and lawfully, the cap a disclosed term. A maker's A-Pass is frozen at the registry; the watcher pulls their orders from every book. Both legs settle in one tx, 0x133d7ffd82299c45fe59b24b375e1b80c91ddfaa21c1f250e223dd44b9b2d498. Zero reverts.
