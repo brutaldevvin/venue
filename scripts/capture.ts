@@ -130,7 +130,7 @@ async function main() {
   lines.push('| Role | Address |')
   lines.push('|---|---|')
   lines.push(`| \`Listed\` security (${opening.asset.symbol}) | ${addr(p.security)} |`)
-  lines.push(`| \`Listed\` cash | ${addr(p.cash)} |`)
+  lines.push(`| Cash leg, Cleanverse aUSDC (not deployed by us) | ${addr(p.cash)} |`)
   lines.push(`| \`Settlement\` | ${addr(p.settlement)} |`)
   lines.push(`| \`MockPolicy\` | ${addr(p.policy)} |`)
   lines.push(`| Cleanverse CCP policy (not used for settlement) | ${addr(p.ccpPolicy)} |`)
@@ -142,7 +142,13 @@ async function main() {
   lines.push('')
   lines.push('## Beat 1 - three books, one asset')
   lines.push('')
-  lines.push('| Viewer | Credential | Address | Asks | Bids | Refusal |')
+  lines.push(
+    'Credentials are resolved live from the Cleanverse CVI registry through `query_apass`,',
+    'not from any contract we control. Sub-tiers below are what Cleanverse holds for these',
+    'wallets.',
+  )
+  lines.push('')
+  lines.push('| Viewer | CVI credential | Address | Asks | Bids | Refusal |')
   lines.push('|---|---|---|---|---|---|')
   for (const v of projections) {
     lines.push(

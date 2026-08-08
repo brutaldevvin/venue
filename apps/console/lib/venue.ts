@@ -13,6 +13,7 @@ import {
   publicClient,
   settlementAbi,
 } from './chain'
+import { resolveCredential, verificationLink } from './cvi'
 import { signOrder, verifyOrder } from './orders'
 import { agentMandate, mandateVerifier } from './mandate'
 import { travelRuleForFill } from './travelrule'
@@ -70,17 +71,10 @@ export interface VenueState {
 }
 
 const VIEWER_DEFS = [
-  { key: 'A', label: 'tier 34 · US', env: 'W_PKEY' },
-  { key: 'B', label: 'tier 34 · DE', env: 'W2_PKEY' },
+  { key: 'A', label: 'verified institution', env: 'VIEWER_A_PKEY' },
+  { key: 'B', label: 'verified, lower tier', env: 'W_PKEY' },
   { key: 'C', label: 'unverified', env: 'FACILITATOR_PKEY' },
 ] as const
-
-/**
- * The registry link an unverified viewer is sent to. `canTransfer` reverts identically for
- * "no credential" and "tier too low", so the chain cannot tell you which - only the CVI API
- * can, and the "why" is what turns a dead end into onboarding.
- */
-const MAGIC_LINK = 'https://test-magiclink.cleanverse.com/'
 
 /**
  * Process-wide book. REST + 1s polling, no WebSocket - it removes a whole class of bug.
@@ -150,41 +144,40 @@ function viewerAddresses(): { key: string; label: string; address: Address }[] {
   })
 }
 
+/**
+ * Credentials come from the Cleanverse CVI registry.
+ *
+ * This used to read `getCredential` off our own policy contract, which meant the demo was
+ * projecting against numbers we had invented. It now resolves the live A-Pass, so the tier
+ * and sub-tier on screen are the ones Cleanverse holds for that wallet.
+ */
 async function readCredential(who: Address): Promise<Credential | null> {
-  const [group, subGroup, tier, subTier, countryBitmap, exists] = (await publicClient.readContract({
-    address: addresses.policy,
-    abi: [
-      {
-        type: 'function',
-        name: 'getCredential',
-        stateMutability: 'view',
-        inputs: [{ name: 'holder', type: 'address' }],
-        outputs: [
-          { type: 'bytes2' },
-          { type: 'bytes2' },
-          { type: 'uint8' },
-          { type: 'uint8' },
-          { type: 'uint256' },
-          { type: 'bool' },
-        ],
-      },
-    ] as const,
-    functionName: 'getCredential',
-    args: [who],
-  })) as [`0x${string}`, `0x${string}`, number, number, bigint, boolean]
+  return resolveCredential(who)
+}
 
-  if (!exists) return null
-  const countries: number[] = []
-  for (let b = 0; b < 256; b++) if ((countryBitmap >> BigInt(b)) & 1n) countries.push(b)
-  return {
-    address: who,
-    group,
-    subGroup,
-    tier,
-    subTier,
-    countries,
-    status: 1,
-    expirationTime: Math.floor(Date.now() / 1000) + 86_400,
+/** What the gate currently holds for a wallet, so mirroring only writes on a difference. */
+async function readMirroredCredential(who: Address): Promise<{ tier: number; subTier: number } | null> {
+  try {
+    const r = (await publicClient.readContract({
+      address: addresses.policy,
+      abi: [
+        {
+          type: 'function',
+          name: 'getCredential',
+          stateMutability: 'view',
+          inputs: [{ name: 'holder', type: 'address' }],
+          outputs: [
+            { type: 'bytes2' }, { type: 'bytes2' }, { type: 'uint8' },
+            { type: 'uint8' }, { type: 'uint256' }, { type: 'bool' },
+          ],
+        },
+      ] as const,
+      functionName: 'getCredential',
+      args: [who],
+    })) as [string, string, number, number, bigint, boolean]
+    return r[5] ? { tier: r[2], subTier: r[3] } : null
+  } catch {
+    return null
   }
 }
 
@@ -273,7 +266,7 @@ export async function injectCrossingBids(): Promise<void> {
         maker: k.address,
         side: 'bid',
         price,
-        qty: 100n,
+        qty: 10n,
         expiry,
         nonce,
       },
@@ -294,13 +287,6 @@ export function reset(): void {
   store.tape = []
   store.seeded = false
 }
-
-/** Credentials the demo starts from. A and the makers clear sub-tier 70; B does not. */
-const DEMO_CREDENTIALS: Array<{ env?: string; subTier: number | null }> = [
-  { env: 'W_PKEY', subTier: 75 },
-  { env: 'W2_PKEY', subTier: 34 },
-  { env: 'FACILITATOR_PKEY', subTier: null },
-]
 
 /**
  * Put the chain back to its opening state and clear the book.
@@ -332,23 +318,25 @@ export async function resetDemo(): Promise<{ restored: number }> {
     outputs: [],
   } as const
 
-  const targets: Array<{ address: Address; subTier: number | null }> = []
-  for (const d of DEMO_CREDENTIALS) {
-    if (!d.env) continue
-    targets.push({ address: privateKeyToAccount(keyFor(d.env)).address, subTier: d.subTier })
-  }
-  for (const k of makerKeys()) targets.push({ address: k.address, subTier: 75 })
+  // Re-mirror from the live registry rather than from constants. Running the demo mutates
+  // on-chain state, and restoring invented values here would quietly replace the real CVI
+  // credentials the whole projection is supposed to be reading.
+  const parties: Address[] = [
+    ...viewerAddresses().map((v) => v.address),
+    ...makerKeys().map((k) => k.address),
+  ]
 
   let restored = 0
-  for (const t of targets) {
-    if (t.subTier === null) continue // viewer C stays uncredentialed - that is its whole role
-    const current = await readCredential(t.address)
-    if (current !== null && current.subTier === t.subTier) continue
+  for (const who of parties) {
+    const live = await resolveCredential(who)
+    if (live === null) continue // viewer C holds no A-Pass; that is its role
+    const onChain = await readMirroredCredential(who)
+    if (onChain !== null && onChain.subTier === live.subTier && onChain.tier === live.tier) continue
     const hash = await wallet.writeContract({
       address: addresses.policy,
       abi: [setCredential],
       functionName: 'setCredential',
-      args: [t.address, '0x0000', '0x4344', 34, t.subTier, 0n],
+      args: [who, live.group, live.subGroup, live.tier, live.subTier, 0n],
     })
     await publicClient.waitForTransactionReceipt({ hash })
     restored++
@@ -472,6 +460,14 @@ export async function getState(): Promise<VenueState> {
     now: Math.floor(Date.now() / 1000),
   }
 
+  // Only unverified viewers need a registry link, so only they cost a call.
+  const links = new Map<Address, string | undefined>()
+  await Promise.all(
+    vs
+      .filter((v) => (creds.get(v.address) ?? null) === null)
+      .map(async (v) => links.set(v.address, await verificationLink(v.address, addresses.security))),
+  )
+
   const viewers: ViewerView[] = vs.map((v) => {
     const cred = creds.get(v.address) ?? null
     const state = states.get(v.address) ?? { position: 0n, allowance: 0n }
@@ -484,7 +480,7 @@ export async function getState(): Promise<VenueState> {
       visible: p.visible,
       refusal: p.refusal,
       bound: p.bound,
-      verifyLink: cred === null ? MAGIC_LINK : undefined,
+      verifyLink: links.get(v.address),
     }
   })
 

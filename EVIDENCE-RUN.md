@@ -10,10 +10,10 @@ full so it can be opened.
 
 | Role | Address |
 |---|---|
-| `Listed` security (RVS) | [`0x7826d0f3909a9f03f8e91d42eb3413db74574e63`](https://testnet.monadscan.com/address/0x7826d0f3909a9f03f8e91d42eb3413db74574e63) |
-| `Listed` cash | [`0x7cdd968432fe93f2d6a2eb6d85d85295d75513c2`](https://testnet.monadscan.com/address/0x7cdd968432fe93f2d6a2eb6d85d85295d75513c2) |
-| `Settlement` | [`0x92c8b8496d497ae4c7a363affedf587ab8b38b3d`](https://testnet.monadscan.com/address/0x92c8b8496d497ae4c7a363affedf587ab8b38b3d) |
-| `MockPolicy` | [`0xc0a1052d6b5c5378e601292ce0a47aff45a15048`](https://testnet.monadscan.com/address/0xc0a1052d6b5c5378e601292ce0a47aff45a15048) |
+| `Listed` security (RVS) | [`0x3b4ef029bef7750f6f8ce81986e51f539ac389de`](https://testnet.monadscan.com/address/0x3b4ef029bef7750f6f8ce81986e51f539ac389de) |
+| Cash leg, Cleanverse aUSDC (not deployed by us) | [`0xaC0893567D43C3E7e6e35a72803df05416C1f20D`](https://testnet.monadscan.com/address/0xaC0893567D43C3E7e6e35a72803df05416C1f20D) |
+| `Settlement` | [`0xea5e891232850b6d3b8822e9883ae81586351f4c`](https://testnet.monadscan.com/address/0xea5e891232850b6d3b8822e9883ae81586351f4c) |
+| `MockPolicy` | [`0x2c6e4819cf4bb4a355f5b29903cff44053e5ebff`](https://testnet.monadscan.com/address/0x2c6e4819cf4bb4a355f5b29903cff44053e5ebff) |
 | Cleanverse CCP policy (not used for settlement) | [`0xaC7e5179C2C7f03f209136886c172eb34F161792`](https://testnet.monadscan.com/address/0xaC7e5179C2C7f03f209136886c172eb34F161792) |
 
 Rule set: `RuleV2(group 0x0000, subGroup 0x0000, minTier 0, minSubTier 70)`.
@@ -21,40 +21,43 @@ Holder cap 5/5, so the cap binds from the opening block.
 
 ## Beat 1 - three books, one asset
 
-| Viewer | Credential | Address | Asks | Bids | Refusal |
+Credentials are resolved live from the Cleanverse CVI registry through `query_apass`,
+not from any contract we control. Sub-tiers below are what Cleanverse holds for these
+wallets.
+
+| Viewer | CVI credential | Address | Asks | Bids | Refusal |
 |---|---|---|---|---|---|
-| [A] tier 34 · US | sub-tier 75 | [`0x03681955065AF6EA51660dd63e7634fd0dE4d0a8`](https://testnet.monadscan.com/address/0x03681955065AF6EA51660dd63e7634fd0dE4d0a8) | 3 | 3 | - |
-| [B] tier 34 · DE | sub-tier 34 | [`0xBe58C5eE13bE6a4aD8C9735c10a2967ED528CfBB`](https://testnet.monadscan.com/address/0xBe58C5eE13bE6a4aD8C9735c10a2967ED528CfBB) | 0 | 0 | subTier >= 70 |
+| [A] verified institution | sub-tier 75 | [`0xaAC4533BFd8d775F55f9B035A073128af50C8cD7`](https://testnet.monadscan.com/address/0xaAC4533BFd8d775F55f9B035A073128af50C8cD7) | 3 | 3 | - |
+| [B] verified, lower tier | sub-tier 9 | [`0x03681955065AF6EA51660dd63e7634fd0dE4d0a8`](https://testnet.monadscan.com/address/0x03681955065AF6EA51660dd63e7634fd0dE4d0a8) | 0 | 0 | subTier >= 70 |
 | [C] unverified | sub-tier none | [`0x9c2795FbFdAd515504112234bf53A4F6e4b841Ce`](https://testnet.monadscan.com/address/0x9c2795FbFdAd515504112234bf53A4F6e4b841Ce) | 0 | 0 | no verified identity |
 
-Projection latency: **615ms** for all three viewers.
+Projection latency: **773ms** for all three viewers.
 
 ## Beat 2 - the holder cap binds
 
 The matcher formed 1 match and passed over 1 bid.
 
-- `bid 10300 x 100 passed over` - governing rule: `holders < 5 (at 5)`
+- `bid 10300 x 10 passed over` - governing rule: `holders < 5 (at 5)`
 
 ## Beat 3 - a credential lapses
 
-Credential revoked for [`0xa9b2A75733e14e1bFDc0753799f8BdeAf77e35B8`](https://testnet.monadscan.com/address/0xa9b2A75733e14e1bFDc0753799f8BdeAf77e35B8); the watcher cancelled 2 resting order(s).
-Revocation: [`0x5e18f042aa73c19380a500d5f0d0f4b2328d5caa1bff95585a0473d69c91a9db`](https://testnet.monadscan.com/tx/0x5e18f042aa73c19380a500d5f0d0f4b2328d5caa1bff95585a0473d69c91a9db)
+Credential revoked for [`0xa9b2A75733e14e1bFDc0753799f8BdeAf77e35B8`](https://testnet.monadscan.com/address/0xa9b2A75733e14e1bFDc0753799f8BdeAf77e35B8); the watcher cancelled 0 resting order(s).
+Revocation: [`0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a`](https://testnet.monadscan.com/tx/0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a)
 
-- `2 orders withdrawn` - reason: `credential withdrawn`
 
 ## Beat 4 - delivery-versus-payment settles
 
-- `100 @ 10150 · both legs CVA`
-  - transaction: [`0x802e3909a8362f4939bba3189ad1d21916c24c5b478b2b5b4e6946bcccec5561`](https://testnet.monadscan.com/tx/0x802e3909a8362f4939bba3189ad1d21916c24c5b478b2b5b4e6946bcccec5561)
-  - Travel Rule (security): unavailable, `[CV_100]Wallet not found for this customer`
-  - Travel Rule (cash): unavailable, `[CV_100]Wallet not found for this customer`
+- `10 @ 10150 · both legs CVA`
+  - transaction: [`0x2d902a562d4cb7de2e107653d59676b7f553a94b1300546fd9a5bb7cf4b2e562`](https://testnet.monadscan.com/tx/0x2d902a562d4cb7de2e107653d59676b7f553a94b1300546fd9a5bb7cf4b2e562)
+  - Travel Rule (security): unavailable, `[TR_001]Transaction not found. Unable to generate report.`
+  - Travel Rule (cash): unavailable, `[TR_001]Transaction not found. Unable to generate report.`
 
 ## Confirmed on chain
 
 | Transaction | Block | Gas | Status |
 |---|---|---|---|
-| [`0x802e3909a8362f4939bba3189ad1d21916c24c5b478b2b5b4e6946bcccec5561`](https://testnet.monadscan.com/tx/0x802e3909a8362f4939bba3189ad1d21916c24c5b478b2b5b4e6946bcccec5561) | 51779409 | 266281 | success |
-| [`0x5e18f042aa73c19380a500d5f0d0f4b2328d5caa1bff95585a0473d69c91a9db`](https://testnet.monadscan.com/tx/0x5e18f042aa73c19380a500d5f0d0f4b2328d5caa1bff95585a0473d69c91a9db) | 51779421 | 52915 | success |
+| [`0x2d902a562d4cb7de2e107653d59676b7f553a94b1300546fd9a5bb7cf4b2e562`](https://testnet.monadscan.com/tx/0x2d902a562d4cb7de2e107653d59676b7f553a94b1300546fd9a5bb7cf4b2e562) | 52028773 | 483260 | success |
+| [`0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a`](https://testnet.monadscan.com/tx/0x5b67287a0842dc8b86ae33d2284815eb664be08088051cab703bdfe97821b28a) | 52028785 | 52915 | success |
 
 Zero reverts across the run: every refusal was formed off-chain and moved no value.
 
