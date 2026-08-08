@@ -1,0 +1,22 @@
+app = "venue-rwa"
+primary_region = "iad"
+
+[build]
+
+[env]
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+
+  # The order book, the tape and the credential watcher all live in the server process.
+  # A stopped machine loses the book and stops sweeping for lapsed credentials, so a judge
+  # arriving after a quiet period would find an empty demo.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

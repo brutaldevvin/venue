@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+.next
+**/.next
+contracts/lib
+contracts/out
+contracts/cache
+.git
+.env
+.env.*
+.venue-makers.json
+logo.PNG
+brand
+submission
+*.md

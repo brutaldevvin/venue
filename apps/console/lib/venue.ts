@@ -1,8 +1,6 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import type { Address, BookState, Credential, Order, RuleV2, ViewerState } from '@venue/core'
 import { project, runMatcher } from '@venue/core'
-import { createWalletClient, http } from 'viem'
+import { createWalletClient, http, keccak256, toHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
   addresses,
@@ -124,16 +122,25 @@ function keyFor(name: string): `0x${string}` {
   return (raw.startsWith('0x') ? raw : `0x${raw}`) as `0x${string}`
 }
 
-function repoRoot(): string {
-  return join(process.cwd(), '..', '..')
-}
+/**
+ * The market makers, derived rather than read from disk.
+ *
+ * This used to load `.venue-makers.json`, which is correctly gitignored and therefore does
+ * not exist in a deployed container: the book would seed empty and the demo would render
+ * three blank panes with no error. The keys are deterministic, so deriving them from the
+ * same label `scripts/seed.ts` uses gives the identical addresses with no file to ship.
+ *
+ * These are demo wallets on a testnet holding only sandbox assets. They are derived from a
+ * public label on purpose, so anyone can reproduce the book, and nothing of value depends on
+ * them being secret.
+ */
+const MAKER_COUNT = 5
 
 function makerKeys(): { address: Address; privateKey: `0x${string}` }[] {
-  try {
-    return JSON.parse(readFileSync(join(repoRoot(), '.venue-makers.json'), 'utf8'))
-  } catch {
-    return []
-  }
+  return Array.from({ length: MAKER_COUNT }, (_, i) => {
+    const privateKey = keccak256(toHex(`venue-market-maker-${i}`))
+    return { address: privateKeyToAccount(privateKey).address as Address, privateKey }
+  })
 }
 
 function viewerAddresses(): { key: string; label: string; address: Address }[] {
