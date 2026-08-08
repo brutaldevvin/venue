@@ -28,6 +28,15 @@ export function clientKey(req: Request): string {
   return req.headers.get('fly-client-ip') ?? req.headers.get('x-real-ip') ?? 'unknown'
 }
 
+/** Diagnostics, so a limiter that silently never fires can be told apart from one that does. */
+export function limiterState(): { trackedKeys: number; machine: string; region: string } {
+  return {
+    trackedKeys: store.size,
+    machine: process.env.FLY_MACHINE_ID ?? 'unknown',
+    region: process.env.FLY_REGION ?? 'unknown',
+  }
+}
+
 export function rateLimit(req: Request): { ok: true } | { ok: false; retryAfter: number } {
   const key = clientKey(req)
   const now = Date.now()

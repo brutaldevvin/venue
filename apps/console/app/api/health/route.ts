@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { CleanverseClient } from '@venue/cleanverse'
 import { privateKeyToAccount } from 'viem/accounts'
 import { addresses, listedAbi, policyAbi, publicClient } from '@/lib/chain'
+import { clientKey, limiterState } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +38,7 @@ function addressOf(envKey: string): string | null {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const chain = process.env.CHAIN ?? 'monad'
   const cv = client()
 
@@ -121,6 +122,8 @@ export async function GET() {
     },
     identities: apass,
     settlementAgentGasWei: agentGas?.toString() ?? null,
+    // Whether one instance is serving, and whether the limiter sees a stable client key.
+    instance: { ...limiterState(), seesClientAs: clientKey(req) },
     notes: {
       cashLeg: 'Cleanverse aUSDC. Enforces CVI on transfer: a wallet with no A-Pass cannot receive it.',
       gate:
