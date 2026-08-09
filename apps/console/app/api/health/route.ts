@@ -17,6 +17,8 @@ export const dynamic = 'force-dynamic'
  * so instead of the endpoint failing.
  */
 const AUSDC = '0xaC0893567D43C3E7e6e35a72803df05416C1f20D'
+const PUBLIC_BASE = 'https://venue-rwa.fly.dev'
+const REPO = 'https://github.com/brutaldevvin/venue'
 
 function client(): CleanverseClient {
   return new CleanverseClient({
@@ -94,8 +96,19 @@ export async function GET(req: Request) {
     }
   })
 
+  const commit = process.env.VENUE_COMMIT || null
+
   const body = {
     ok: block !== null && apass.some((a) => a.hasApass),
+    build: {
+      commit,
+      commitUrl: commit && commit !== 'unknown' ? `${REPO}/commit/${commit}` : null,
+      source: REPO,
+      summary: `${PUBLIC_BASE}/summary`,
+      llms: `${PUBLIC_BASE}/llms.txt`,
+      evidenceRun: `${REPO}/blob/main/EVIDENCE-RUN.md`,
+      onePage: `${REPO}/blob/main/submission/one-page-summary.md`,
+    },
     checks: {
       monadRpcReachable: block !== null,
       cleanverseRegistryReachable: apass.some((a) => a.hasApass),

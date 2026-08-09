@@ -178,6 +178,7 @@ export default function Console({ initialState }: { initialState: State | null }
       )}
 
       <Hero state={state} />
+      <JudgePath />
 
       <div className="px-8 pb-6">
         <div className="border border-dashed border-line rounded-lg p-4">
@@ -270,6 +271,61 @@ function Hero({ state }: { state: State | null }) {
         <span>
           reverts <span className="text-indigo">0</span>
         </span>
+      </div>
+    </section>
+  )
+}
+
+
+function JudgePath() {
+  const proofLinks = [
+    ['summary', '/summary', 'rubric-first one-page artifact'],
+    ['health', '/api/health', 'live Monad, CVI, contracts and cash-leg proof'],
+    ['state', '/api/state', 'raw per-viewer projected books'],
+    ['ledger', '/api/ledger', 'settlements rechecked by receipt'],
+    ['llms', '/llms.txt', 'plain-text agent brief'],
+    ['source', 'https://github.com/brutaldevvin/venue', 'public repo and commit history'],
+  ]
+  const rubric = ['Concept 20%', 'CVI/CVA depth 30%', 'Build quality 25%', 'UX/demo 15%', 'Scalability 10%']
+  return (
+    <section className="px-8 pb-6">
+      <div className="border border-line bg-card rounded-lg p-4 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-5">
+        <div>
+          <div className="font-mono text-[11px] uppercase tracking-[0.06em] text-muted">
+            for judges and agents
+          </div>
+          <p className="mt-2 text-[14px] leading-[1.6] text-body max-w-[760px]">
+            Start with the live proof, then run the two demo beats. The app is designed to be
+            readable without trust in screenshots: health proves the dependencies, state exposes
+            the projected books as JSON, and the ledger rechecks settlement receipts.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {rubric.map((r) => (
+              <span
+                key={r}
+                className="font-mono text-[10px] uppercase tracking-[0.04em] px-2 h-[22px] rounded-sm border border-line bg-ground text-muted flex items-center"
+              >
+                {r}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {proofLinks.map(([label, href, note]) => (
+            <a
+              key={href}
+              href={href}
+              target={href.startsWith('http') ? '_blank' : undefined}
+              rel={href.startsWith('http') ? 'noreferrer' : undefined}
+              className="border border-dashed border-line rounded-md p-3 hover:bg-ground"
+            >
+              <div className="font-mono text-[11px] uppercase tracking-[0.04em] text-indigo">
+                /{label}
+              </div>
+              <div className="mt-1 font-mono text-[10px] leading-[1.45] text-muted">{note}</div>
+            </a>
+          ))}
+        </div>
       </div>
     </section>
   )

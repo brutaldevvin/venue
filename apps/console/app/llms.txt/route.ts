@@ -36,11 +36,24 @@ Eligibility shapes the order book instead of gating the transfer.
 
 Chain: Monad testnet, chainId 10143.
 Source: https://github.com/brutaldevvin/venue
+Live demo: https://venue-rwa.fly.dev/
+Primary summary: https://venue-rwa.fly.dev/summary
 
 Read first:
+- /summary      live rubric-first one-page artifact for judges and agents
 - /api/health   liveness across every dependency, nothing cached or simulated
 - /api/state    the per-viewer projection this page renders, as JSON
+- /api/ledger   confirmed settlements rechecked against receipts
 - /JUDGES.md    in the repo: what to click, and how to verify it is not staged
+
+Judging rubric map:
+- Concept 20%: compliant-RWA secondary market where eligibility shapes market structure.
+- CVI/CVA integration depth 30%: real A-Passes, live query_apass reads, update_status lapse,
+  Cleanverse aUSDC cash leg, registered CVA security, RuleV2 decoding and policy calls.
+- Build quality 25%: clean-clone build, 23 Foundry tests, 60,000 property cases,
+  differential test against deployed contracts, generated evidence run.
+- UX and demo 15%: three panes for three CVI states, guided buttons, linked transaction tape.
+- Scalability 10%: listing-level RuleV2 projection plus order-level venue limits.
 
 Core behaviour:
 - One order book is projected per viewer against their live Cleanverse Verified Identity.

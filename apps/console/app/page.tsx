@@ -176,6 +176,10 @@ function Facts({ state }: { state: VenueState | null }) {
       </p>
       <p className="mt-3 max-w-[820px] font-mono text-[11px] text-muted">
         Machine readable:{' '}
+        <a className="text-indigo hover:underline" href="/summary">
+          /summary
+        </a>{' '}
+        is the rubric-first judging artifact,{' '}
         <a className="text-indigo hover:underline" href="/api/health">
           /api/health
         </a>{' '}

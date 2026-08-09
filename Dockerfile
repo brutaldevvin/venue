@@ -23,7 +23,8 @@ RUN pnpm --filter @venue/console build
 
 FROM base AS runtime
 WORKDIR /app
-ENV NODE_ENV=production
+ARG COMMIT_SHA=unknown
+ENV NODE_ENV=production VENUE_COMMIT=$COMMIT_SHA
 
 # Standalone emits a self-contained server plus the node_modules it actually traced. Static
 # assets and public/ are not traced and have to be copied alongside it.
