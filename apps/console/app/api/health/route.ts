@@ -107,7 +107,7 @@ export async function GET(req: Request) {
       summary: `${PUBLIC_BASE}/summary`,
       llms: `${PUBLIC_BASE}/llms.txt`,
       evidenceRun: `${REPO}/blob/main/EVIDENCE-RUN.md`,
-      onePage: `${REPO}/blob/main/submission/one-page-summary.md`,
+      onePage: `${REPO}/blob/main/ONE-PAGE-SUMMARY.md`,
     },
     checks: {
       monadRpcReachable: block !== null,
