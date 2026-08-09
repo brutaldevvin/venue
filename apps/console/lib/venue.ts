@@ -1,12 +1,13 @@
 import type { Address, BookState, Credential, Order, RuleV2, ViewerState } from '@venue/core'
 import { project, runMatcher } from '@venue/core'
-import { createWalletClient, http, keccak256, toHex } from 'viem'
+import { createWalletClient, keccak256, toHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
   addresses,
   canTransfer,
   listedAbi,
   monadTestnet,
+  monadTransport,
   policyAbi,
   publicClient,
   settlementAbi,
@@ -440,7 +441,7 @@ export async function resetDemo(): Promise<{ restored: number }> {
   const wallet = createWalletClient({
     account: owner,
     chain: monadTestnet,
-    transport: http(process.env.MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz'),
+    transport: monadTransport(),
   })
 
   const setCredential = {
@@ -766,7 +767,7 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
   const wallet = createWalletClient({
     account: agent,
     chain: monadTestnet,
-    transport: http(process.env.MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz'),
+    transport: monadTransport(),
   })
 
   const signedMandate = await agentMandate()

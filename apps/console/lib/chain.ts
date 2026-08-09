@@ -1,16 +1,46 @@
-import { createPublicClient, defineChain, http } from 'viem'
+import { createPublicClient, defineChain, fallback, http } from 'viem'
+
+export const MONAD_PUBLIC_RPC_URLS = [
+  'https://testnet-rpc.monad.xyz',
+  'https://rpc.ankr.com/monad_testnet',
+  'https://rpc-testnet.monadinfra.com',
+] as const
 
 export const monadTestnet = defineChain({
   id: 10143,
   name: 'Monad Testnet',
   nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
-  rpcUrls: { default: { http: ['https://testnet-rpc.monad.xyz'] } },
+  rpcUrls: { default: { http: [...MONAD_PUBLIC_RPC_URLS] } },
   blockExplorers: { default: { name: 'MonadScan', url: 'https://testnet.monadscan.com' } },
 })
 
+export function monadRpcUrls(): string[] {
+  const configured = [
+    ...(process.env.MONAD_RPC_URLS ?? '').split(','),
+    process.env.MONAD_RPC_URL ?? '',
+  ]
+    .map((url) => url.trim())
+    .filter(Boolean)
+  return [...new Set([...configured, ...MONAD_PUBLIC_RPC_URLS])]
+}
+
+export function monadTransport() {
+  return fallback(
+    monadRpcUrls().map((url, i) =>
+      http(url, {
+        key: `monad-http-${i}`,
+        name: `Monad RPC ${i + 1}`,
+        retryCount: 0,
+        timeout: 2500,
+      }),
+    ),
+    { retryCount: 0 },
+  )
+}
+
 export const publicClient = createPublicClient({
   chain: monadTestnet,
-  transport: http(process.env.MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz'),
+  transport: monadTransport(),
 })
 
 export const addresses = {

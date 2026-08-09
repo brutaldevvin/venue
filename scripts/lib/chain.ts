@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createPublicClient, createWalletClient, defineChain, http } from 'viem'
+import { createPublicClient, createWalletClient, defineChain, fallback, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -26,20 +26,50 @@ export function loadEnv(): void {
   }
 }
 
+export const MONAD_PUBLIC_RPC_URLS = [
+  'https://testnet-rpc.monad.xyz',
+  'https://rpc.ankr.com/monad_testnet',
+  'https://rpc-testnet.monadinfra.com',
+] as const
+
 export const monadTestnet = defineChain({
   id: 10143,
   name: 'Monad Testnet',
   nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
-  rpcUrls: { default: { http: ['https://testnet-rpc.monad.xyz'] } },
+  rpcUrls: { default: { http: [...MONAD_PUBLIC_RPC_URLS] } },
   blockExplorers: { default: { name: 'MonadScan', url: 'https://testnet.monadscan.com' } },
 })
 
+export function rpcUrls(): string[] {
+  const configured = [
+    ...(process.env.MONAD_RPC_URLS ?? '').split(','),
+    process.env.MONAD_RPC_URL ?? '',
+  ]
+    .map((url) => url.trim())
+    .filter(Boolean)
+  return [...new Set([...configured, ...MONAD_PUBLIC_RPC_URLS])]
+}
+
 export function rpcUrl(): string {
-  return process.env.MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz'
+  return rpcUrls()[0]
+}
+
+export function rpcTransport() {
+  return fallback(
+    rpcUrls().map((url, i) =>
+      http(url, {
+        key: `monad-http-${i}`,
+        name: `Monad RPC ${i + 1}`,
+        retryCount: 0,
+        timeout: 2500,
+      }),
+    ),
+    { retryCount: 0 },
+  )
 }
 
 export function publicClient() {
-  return createPublicClient({ chain: monadTestnet, transport: http(rpcUrl()) })
+  return createPublicClient({ chain: monadTestnet, transport: rpcTransport() })
 }
 
 export function account(pkeyEnv: string) {
@@ -51,7 +81,7 @@ export function walletClient(pkeyEnv: string) {
   return createWalletClient({
     account: account(pkeyEnv),
     chain: monadTestnet,
-    transport: http(rpcUrl()),
+    transport: rpcTransport(),
   })
 }
 
