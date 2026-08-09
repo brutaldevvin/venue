@@ -140,8 +140,8 @@ export default function Console({ initialState }: { initialState: State | null }
         setState(json)
         setError(null)
       }
-    } catch (e) {
-      setError((e as Error).message)
+    } catch {
+      setError('state temporarily unavailable; retrying')
     }
   }, [])
 
@@ -513,8 +513,8 @@ function Ticket({ viewer, onPlaced }: { viewer: string; onPlaced: () => void }) 
       const json = await res.json()
       if (!json.ok) setErr(json.reason ?? 'rejected')
       else onPlaced()
-    } catch (e) {
-      setErr((e as Error).message)
+    } catch {
+      setErr('order could not be placed')
     } finally {
       setBusy(false)
     }

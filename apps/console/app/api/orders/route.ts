@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     })
     return NextResponse.json(res, { status: res.ok ? 200 : 400 })
   } catch (e) {
-    return NextResponse.json({ ok: false, reason: (e as Error).message }, { status: 500 })
+    console.error('[api/orders] failed', e)
+    return NextResponse.json({ ok: false, reason: 'order could not be placed' }, { status: 500 })
   }
 }

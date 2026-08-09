@@ -97,6 +97,108 @@ const store: Store = ((globalThis as { __venue?: Store }).__venue ??= {
   hydrated: false,
 })
 
+const DEMO_RULES: RuleV2[] = [
+  {
+    allowedGroup: '0x0000',
+    allowedSubGroup: '0x0000',
+    minTier: 0,
+    minSubTier: 70,
+    isBlackList: false,
+    countryBitmap: 0n,
+  },
+]
+
+interface ChainSnapshot {
+  rules: RuleV2[]
+  holderCount: bigint
+  maxHolders: bigint
+}
+
+const chainSnapshot: ChainSnapshot = ((globalThis as {
+  __venueChainSnapshot?: ChainSnapshot
+}).__venueChainSnapshot ??= {
+  rules: DEMO_RULES.map((r) => ({ ...r })),
+  holderCount: 5n,
+  maxHolders: 5n,
+})
+
+function sanitizedError(e: unknown): string {
+  const message = e instanceof Error ? e.message : String(e)
+  return message.replace(/https?:\/\/\S+/g, '[url]').slice(0, 180)
+}
+
+async function withTimeout<T>(label: string, work: Promise<T>, timeoutMs = 3500): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+async function readCached<T>(label: string, work: Promise<T>, cached: T): Promise<T> {
+  try {
+    return await withTimeout(label, work)
+  } catch (e) {
+    console.warn(`[venue] ${label} unavailable; using cached value: ${sanitizedError(e)}`)
+    return cached
+  }
+}
+
+function normalizeRules(rules: readonly RuleV2[]): RuleV2[] {
+  return rules.map((r) => ({
+    allowedGroup: r.allowedGroup,
+    allowedSubGroup: r.allowedSubGroup,
+    minTier: Number(r.minTier),
+    minSubTier: Number(r.minSubTier),
+    isBlackList: Boolean(r.isBlackList),
+    countryBitmap: BigInt(r.countryBitmap),
+  }))
+}
+
+async function readRulesAndLimits(): Promise<ChainSnapshot> {
+  const [rules, holderCount, maxHolders] = await Promise.all([
+    readCached(
+      'getRulesV2',
+      publicClient.readContract({
+        address: addresses.policy,
+        abi: policyAbi,
+        functionName: 'getRulesV2',
+        args: [addresses.security],
+      }),
+      chainSnapshot.rules,
+    ),
+    readCached(
+      'holderCount',
+      publicClient.readContract({
+        address: addresses.security,
+        abi: listedAbi,
+        functionName: 'holderCount',
+      }),
+      chainSnapshot.holderCount,
+    ),
+    readCached(
+      'maxHolders',
+      publicClient.readContract({
+        address: addresses.security,
+        abi: listedAbi,
+        functionName: 'maxHolders',
+      }),
+      chainSnapshot.maxHolders,
+    ),
+  ])
+
+  chainSnapshot.rules = normalizeRules(rules as readonly RuleV2[])
+  chainSnapshot.holderCount = BigInt(holderCount)
+  chainSnapshot.maxHolders = BigInt(maxHolders)
+  return chainSnapshot
+}
+
 /**
  * The watcher runs for the life of the process, pulling orders whose maker's credential has
  * lapsed. Started lazily on first read so there is no separate process to run.
@@ -534,33 +636,7 @@ export async function getState(): Promise<VenueState> {
   ensureWatching()
   const started = Date.now()
 
-  const [rules, holderCount, maxHolders] = await Promise.all([
-    publicClient.readContract({
-      address: addresses.policy,
-      abi: policyAbi,
-      functionName: 'getRulesV2',
-      args: [addresses.security],
-    }),
-    publicClient.readContract({
-      address: addresses.security,
-      abi: listedAbi,
-      functionName: 'holderCount',
-    }),
-    publicClient.readContract({
-      address: addresses.security,
-      abi: listedAbi,
-      functionName: 'maxHolders',
-    }),
-  ])
-
-  const ruleList = (rules as readonly RuleV2[]).map((r) => ({
-    allowedGroup: r.allowedGroup,
-    allowedSubGroup: r.allowedSubGroup,
-    minTier: Number(r.minTier),
-    minSubTier: Number(r.minSubTier),
-    isBlackList: Boolean(r.isBlackList),
-    countryBitmap: BigInt(r.countryBitmap),
-  }))
+  const { rules: ruleList, holderCount, maxHolders } = await readRulesAndLimits()
 
   const vs = viewerAddresses()
   const makers = [...new Set(store.orders.map((o) => o.maker))]
@@ -645,33 +721,7 @@ export async function getState(): Promise<VenueState> {
 export async function runAndSettle(): Promise<{ matched: number; skipped: number }> {
   await seedBook()
 
-  const [rules, holderCount, maxHolders] = await Promise.all([
-    publicClient.readContract({
-      address: addresses.policy,
-      abi: policyAbi,
-      functionName: 'getRulesV2',
-      args: [addresses.security],
-    }),
-    publicClient.readContract({
-      address: addresses.security,
-      abi: listedAbi,
-      functionName: 'holderCount',
-    }),
-    publicClient.readContract({
-      address: addresses.security,
-      abi: listedAbi,
-      functionName: 'maxHolders',
-    }),
-  ])
-
-  const ruleList = (rules as readonly RuleV2[]).map((r) => ({
-    allowedGroup: r.allowedGroup,
-    allowedSubGroup: r.allowedSubGroup,
-    minTier: Number(r.minTier),
-    minSubTier: Number(r.minSubTier),
-    isBlackList: Boolean(r.isBlackList),
-    countryBitmap: BigInt(r.countryBitmap),
-  }))
+  const { rules: ruleList, holderCount, maxHolders } = await readRulesAndLimits()
 
   const parties = [...new Set(store.orders.map((o) => o.maker))]
   const creds = new Map<Address, Credential | null>()
@@ -806,7 +856,7 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
         kind: 'refusal',
         at: Date.now(),
         text: `settlement refused, no value moved`,
-        rule: (e as Error).message.slice(0, 80),
+        rule: 'settlement dependency unavailable',
       })
     }
   }

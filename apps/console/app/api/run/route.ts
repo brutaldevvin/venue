@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     if (action === 'cross') await injectCrossingBids()
     return NextResponse.json(await runAndSettle())
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    console.error('[api/run] failed', e)
+    return NextResponse.json({ error: 'demo action failed; no value moved' }, { status: 500 })
   }
 }

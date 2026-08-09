@@ -13,6 +13,7 @@ export async function GET() {
       { headers: { 'Content-Type': 'application/json' } },
     )
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    console.error('[api/state] failed', e)
+    return NextResponse.json({ error: 'state temporarily unavailable; retrying' }, { status: 503 })
   }
 }
