@@ -617,9 +617,10 @@ function Proofs({ state }: { state: State | null }) {
   const p = state.proof
   const rows: [string, string, string?][] = [
     ['security (CVA)', p.security],
-    ['cash (CVA)', p.cash],
+    ['cash: Cleanverse aUSDC', p.cash],
     ['settlement', p.settlement],
-    ['policy', p.policy, 'MockPolicy, see note'],
+    ['policy (enforces live CVI)', p.policy],
+    ['Cleanverse validator', p.ccpPolicy, 'rules read from here'],
   ]
   return (
     <section className="px-8 pb-8">
@@ -660,13 +661,14 @@ function Proofs({ state }: { state: State | null }) {
       </div>
 
       <p className="mt-3 max-w-[760px] font-mono text-[11px] leading-[1.6] text-muted">
-        Credentials are real A-Passes read live from the Cleanverse registry, and the cash leg
-        is Cleanverse aUSDC itself. The gate is our own instance of the documented
-        IATokenPolicy because the Cleanverse validator at{' '}
-        <AddressLink address={p.ccpPolicy} explorer={p.explorer} /> does not expose
-        canTransfer: extracting all 98 selectors from its implementation shows getRulesV2
-        present and canTransfer absent. Its sub-tiers mirror the registry, and the policy is a
-        constructor argument, so the same bytecode repoints with no code change.
+        Credentials are real A-Passes, read live from the Cleanverse registry, and the cash leg
+        is Cleanverse aUSDC itself, which enforces CVI on transfer. The token gates against our
+        own instance of the documented IATokenPolicy for one reason: the Cleanverse validator
+        does not expose canTransfer. Extracting all 98 selectors from its implementation shows
+        getRulesV2 present and canTransfer absent, and a live registered CVA confirms the
+        address by returning it from validator(). That instance enforces the tier and sub-tier
+        the registry actually holds for each wallet, mirrored on every reset, and the policy is
+        a constructor argument, so the same bytecode repoints the day canTransfer appears.
       </p>
     </section>
   )
