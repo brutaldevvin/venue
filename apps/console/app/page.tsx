@@ -179,7 +179,7 @@ function Facts({ state }: { state: VenueState | null }) {
         <a className="text-indigo hover:underline" href="/summary">
           /summary
         </a>{' '}
-        is the rubric-first judging artifact,{' '}
+        is the project summary,{' '}
         <a className="text-indigo hover:underline" href="/api/health">
           /api/health
         </a>{' '}

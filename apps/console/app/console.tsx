@@ -213,18 +213,6 @@ function Chrome({ state }: { state: State | null }) {
       {/* The lockup carries the wordmark, so there is no separate "Venue" text beside it. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/venue-lockup.png" alt="Venue" className="h-[26px] w-auto shrink-0" />
-      <div className="font-mono text-[11px] opacity-80 ml-6">
-        {state ? (
-          <AddressLink
-            address={state.asset.address}
-            explorer={state.proof.explorer}
-            label={`${state.asset.symbol} · ${state.asset.name}`}
-            onField
-          />
-        ) : (
-          '-'
-        )}
-      </div>
       <div className="ml-auto flex items-center gap-4 font-mono text-[11px]">
         <span className="opacity-80">
           <span className="opacity-70">●</span> {state?.proof.network ?? 'connecting'}
@@ -279,36 +267,25 @@ function Hero({ state }: { state: State | null }) {
 
 function JudgePath() {
   const proofLinks = [
-    ['summary', '/summary', 'rubric-first one-page artifact'],
+    ['summary', '/summary', 'one-page project summary'],
     ['health', '/api/health', 'live Monad, CVI, contracts and cash-leg proof'],
     ['state', '/api/state', 'raw per-viewer projected books'],
     ['ledger', '/api/ledger', 'settlements rechecked by receipt'],
-    ['llms', '/llms.txt', 'plain-text agent brief'],
+    ['llms', '/llms.txt', 'plain-text project brief'],
     ['source', 'https://github.com/brutaldevvin/venue', 'public repo and commit history'],
   ]
-  const rubric = ['Concept 20%', 'CVI/CVA depth 30%', 'Build quality 25%', 'UX/demo 15%', 'Scalability 10%']
   return (
     <section className="px-8 pb-6">
       <div className="border border-line bg-card rounded-lg p-4 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-5">
         <div>
           <div className="font-mono text-[11px] uppercase tracking-[0.06em] text-muted">
-            for judges and agents
+            verification path
           </div>
           <p className="mt-2 text-[14px] leading-[1.6] text-body max-w-[760px]">
             Start with the live proof, then run the two demo beats. The app is designed to be
             readable without trust in screenshots: health proves the dependencies, state exposes
             the projected books as JSON, and the ledger rechecks settlement receipts.
           </p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {rubric.map((r) => (
-              <span
-                key={r}
-                className="font-mono text-[10px] uppercase tracking-[0.04em] px-2 h-[22px] rounded-sm border border-line bg-ground text-muted flex items-center"
-              >
-                {r}
-              </span>
-            ))}
-          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {proofLinks.map(([label, href, note]) => (
