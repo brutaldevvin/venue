@@ -14,7 +14,7 @@ import {
 import { resolveCredential, setApassStatus, verificationLink } from './cvi'
 import { signOrder, verifyOrder } from './orders'
 import { agentMandate, mandateVerifier } from './mandate'
-import { appendSettlement } from './ledger'
+import { appendSettlement, readLedger } from './ledger'
 import { travelRuleForFill } from './travelrule'
 import { Watcher } from './watcher'
 
@@ -87,12 +87,14 @@ interface Store {
   orders: Order[]
   seeded: boolean
   watcher: Watcher | null
+  hydrated: boolean
 }
 const store: Store = ((globalThis as { __venue?: Store }).__venue ??= {
   tape: [],
   orders: [],
   seeded: false,
   watcher: null,
+  hydrated: false,
 })
 
 /**
@@ -495,8 +497,40 @@ export async function addOrder(o: Order): Promise<{ ok: boolean; reason?: string
   return { ok: true }
 }
 
+/**
+ * Fill the tape from the published ledger.
+ *
+ * The tape used to hold only what this process had seen, so every redeploy wiped it and a
+ * visitor was told the venue had never settled anything. The settlements are published to
+ * venue-data as they happen, so the history is recoverable: it is loaded once per process and
+ * live events accumulate on top. Deduplicated by transaction hash, because a settlement made
+ * by this process is both in the tape already and in the ledger it just wrote to.
+ */
+async function hydrateTape(): Promise<void> {
+  if (store.hydrated) return
+  store.hydrated = true
+  try {
+    const records = await readLedger()
+    const known = new Set(store.tape.map((r) => r.txHash).filter(Boolean))
+    // The ledger is newest first; the tape is oldest first and reversed for display.
+    const rows: TapeRow[] = [...records]
+      .reverse()
+      .filter((r) => !known.has(r.txHash))
+      .map((r) => ({
+        kind: 'fill' as const,
+        at: Date.parse(r.at) || Date.now(),
+        text: `${r.qty} @ ${r.price} · both legs CVA`,
+        txHash: r.txHash,
+      }))
+    store.tape = [...rows, ...store.tape]
+  } catch {
+    // A ledger fetch failure must not empty the tape or fail the page.
+  }
+}
+
 export async function getState(): Promise<VenueState> {
   await seedBook()
+  await hydrateTape()
   ensureWatching()
   const started = Date.now()
 
@@ -602,7 +636,7 @@ export async function getState(): Promise<VenueState> {
     rules: ruleList,
     limits: { ...limits, positionLimit: limits.positionLimit.toString() },
     viewers,
-    tape: [...store.tape].reverse().slice(0, 40),
+    tape: [...store.tape].reverse().slice(0, 100),
     latencyMs: Date.now() - started,
   }
 }

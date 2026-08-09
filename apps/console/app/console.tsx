@@ -682,7 +682,9 @@ function Tape({ rows, explorer }: { rows: TapeRow[]; explorer?: string }) {
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.04em] opacity-70 mb-3 hover:opacity-100"
       >
-        <span>Tape</span>
+        <span>
+          Tape{rows.length > 0 ? ` · ${rows.length} events` : ''}
+        </span>
         <span {...SYM}>[{open ? '⌄' : '⌃'}]</span>
       </button>
       {open && rows.length === 0 && (
@@ -690,7 +692,11 @@ function Tape({ rows, explorer }: { rows: TapeRow[]; explorer?: string }) {
           nothing settled yet, press <span className="opacity-90">1. two bids cross</span>
         </div>
       )}
-      <div className={`space-y-1 ${open ? '' : 'hidden'}`}>
+      {/* Scrolls rather than grows: the tape carries every settlement the venue has ever
+          made, so it has to stay a fixed band at the foot of the page. */}
+      <div
+        className={`space-y-1 max-h-[220px] overflow-y-auto pr-2 ${open ? '' : 'hidden'}`}
+      >
         {rows.map((r, i) => (
           <div
             key={`${r.at}-${i}`}
