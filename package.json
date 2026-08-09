@@ -6,10 +6,13 @@
   "engines": { "node": ">=18" },
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "test": "vitest run",
+    "test": "pnpm contracts:build && vitest run",
     "test:watch": "vitest",
     "typecheck": "pnpm -r exec tsc --noEmit",
-    "probe": "tsx scripts/probe.ts"
+    "contracts:deps": "tsx scripts/ensure-foundry-deps.ts",
+    "contracts:build": "tsx scripts/ensure-foundry-deps.ts build",
+    "contracts:test": "tsx scripts/ensure-foundry-deps.ts test",
+    "probe": "tsx scripts/probe-real-policy.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
