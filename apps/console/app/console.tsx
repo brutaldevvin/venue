@@ -170,6 +170,7 @@ export default function Console({ initialState }: { initialState: State | null }
   return (
     <main className="min-h-screen flex flex-col">
       <Chrome state={state} />
+      <ScrollHint />
 
       {error && (
         <div className="px-8 py-3 font-mono text-[11px] text-bound border-b border-line">
@@ -204,6 +205,17 @@ export default function Console({ initialState }: { initialState: State | null }
       <Proofs state={state} />
       <Tape rows={state?.tape ?? []} explorer={state?.proof.explorer} />
     </main>
+  )
+}
+
+function ScrollHint() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed bottom-4 left-1/2 z-30 flex h-8 w-5 -translate-x-1/2 items-start justify-center rounded-full border border-indigo/35 bg-card/85 shadow-[0_0_18px_rgba(30,30,190,0.12)] backdrop-blur"
+    >
+      <span className="mt-2 h-1.5 w-1.5 rounded-full bg-indigo motion-safe:animate-bounce" />
+    </div>
   )
 }
 
@@ -294,12 +306,14 @@ function JudgePath() {
               href={href}
               target={href.startsWith('http') ? '_blank' : undefined}
               rel={href.startsWith('http') ? 'noreferrer' : undefined}
-              className="border border-dashed border-line rounded-md p-3 hover:bg-ground"
+              className="group border border-dashed border-line rounded-md p-3 transition-colors hover:border-indigo hover:bg-indigo"
             >
-              <div className="font-mono text-[11px] uppercase tracking-[0.04em] text-indigo">
+              <div className="font-mono text-[11px] uppercase tracking-[0.04em] text-indigo transition-colors group-hover:text-on-indigo">
                 /{label}
               </div>
-              <div className="mt-1 font-mono text-[10px] leading-[1.45] text-muted">{note}</div>
+              <div className="mt-1 font-mono text-[10px] leading-[1.45] text-muted transition-colors group-hover:text-on-indigo group-hover:opacity-80">
+                {note}
+              </div>
             </a>
           ))}
         </div>
