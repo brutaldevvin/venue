@@ -19,6 +19,14 @@ export interface RuleV2 {
   /** 0-99. 0 = unrestricted. */
   minSubTier: number
   /**
+   * Whether the country set is a deny-list rather than an allow-list.
+   *
+   * The Cleanverse team confirmed this field belongs before `countryBitmap` in `RuleV2`.
+   * Defaults to false, meaning the listed countries are the only ones permitted.
+   */
+  isBlackList: boolean
+
+  /**
    * Country membership as a 256-bit mask. 0n = unrestricted, whichever way `isBlackList`
    * points.
    *
@@ -28,17 +36,7 @@ export interface RuleV2 {
    * integration guide's "ISO 3166-1 numeric bit positions" cannot mean literally: numeric
    * codes run to 894, and 1 << 840 does not fit a uint256.
    */
-  poolCountryBitmap: bigint
-
-  /**
-   * Whether the country set is a deny-list rather than an allow-list.
-   *
-   * Absent from the CCP integration guide's five-field struct, but present in the deployed
-   * policy - counting the ABI words of a raw `getRulesV2` return on Monad gives six per
-   * rule - and documented in the v3 API as `is_black_list`. Defaults to false, meaning the
-   * listed countries are the only ones permitted.
-   */
-  isBlackList: boolean
+  countryBitmap: bigint
 }
 
 /**
@@ -54,7 +52,7 @@ export interface Credential {
   subGroup: Bytes2
   tier: number
   subTier: number
-  /** Country indices in the range 0-255, matching `RuleV2.poolCountryBitmap` bit positions. */
+  /** Country indices in the range 0-255, matching `RuleV2.countryBitmap` bit positions. */
   countries: number[]
   /** 1 = active. Anything else fails eligibility outright. */
   status: number

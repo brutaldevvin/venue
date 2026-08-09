@@ -29,8 +29,8 @@ contract ListedTest is Test {
                 allowedSubGroup: bytes2(0),
                 minTier: 0,
                 minSubTier: 9,
-                poolCountryBitmap: 0,
-                isBlackList: false
+                isBlackList: false,
+                countryBitmap: 0
             })
         );
 
@@ -179,8 +179,8 @@ contract ListedTest is Test {
                 allowedSubGroup: bytes2(0),
                 minTier: 0,
                 minSubTier: 0,
-                poolCountryBitmap: bitmap,
-                isBlackList: blacklist
+                isBlackList: blacklist,
+                countryBitmap: bitmap
             })
         );
     }
@@ -214,9 +214,8 @@ contract ListedTest is Test {
         assertTrue(policy.canTransfer(address(listed), address(0), alice, 1));
     }
 
-    /// @dev Rules are OR across the array, so a listing can carry several cohorts. This is
-    ///      also the shape that a five-field ABI decode corrupts: with one rule the missing
-    ///      sixth field is harmless, with two the second rule misaligns entirely.
+    /// @dev Rules are OR across the array, so a listing can carry several cohorts. Omitting
+    ///      `isBlackList` from the ABI corrupts country handling and multi-rule decoding.
     function test_multipleRules_areOredAndDecodeCleanly() public {
         policy.setRuleV2(
             address(listed),
@@ -225,8 +224,8 @@ contract ListedTest is Test {
                 allowedSubGroup: bytes2(0),
                 minTier: 0,
                 minSubTier: 70,
-                poolCountryBitmap: 0,
-                isBlackList: false
+                isBlackList: false,
+                countryBitmap: 0
             })
         );
         policy.addRuleV2(
@@ -236,8 +235,8 @@ contract ListedTest is Test {
                 allowedSubGroup: 0x4344,
                 minTier: 0,
                 minSubTier: 9,
-                poolCountryBitmap: 0,
-                isBlackList: false
+                isBlackList: false,
+                countryBitmap: 0
             })
         );
 

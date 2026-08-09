@@ -56,8 +56,8 @@ export function matches(v: Credential, r: RuleV2): boolean {
  * could be wrong, so it is separated out and tested from both sides.
  */
 export function countryAllows(v: Credential, r: RuleV2): boolean {
-  if (r.poolCountryBitmap === 0n) return true
-  const overlaps = (countryBitmap(v.countries) & r.poolCountryBitmap) !== 0n
+  if (r.countryBitmap === 0n) return true
+  const overlaps = (countryBitmap(v.countries) & r.countryBitmap) !== 0n
   return r.isBlackList ? !overlaps : overlaps
 }
 

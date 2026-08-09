@@ -52,8 +52,8 @@ contract SettlementTest is Test {
                 allowedSubGroup: bytes2(0),
                 minTier: 0,
                 minSubTier: minSubTier,
-                poolCountryBitmap: 0,
-                isBlackList: false
+                isBlackList: false,
+                countryBitmap: 0
             })
         );
     }

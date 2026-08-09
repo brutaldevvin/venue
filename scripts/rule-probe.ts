@@ -21,14 +21,16 @@ const camel = {
   allowedSubGroup: 'CD',
   minTier: 0,
   minSubTier: 9,
-  poolCountryBitmap: 0,
+  isBlackList: false,
+  countryBitmap: 0,
 }
 const snake = {
   allowed_group: '',
   allowed_sub_group: 'CD',
   min_tier: 0,
   min_sub_tier: 9,
-  pool_country_bitmap: 0,
+  is_black_list: false,
+  country_bitmap: 0,
 }
 
 const shapes: Array<[string, unknown]> = [

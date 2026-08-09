@@ -558,8 +558,8 @@ export async function getState(): Promise<VenueState> {
     allowedSubGroup: r.allowedSubGroup,
     minTier: Number(r.minTier),
     minSubTier: Number(r.minSubTier),
-    poolCountryBitmap: BigInt(r.poolCountryBitmap),
     isBlackList: Boolean(r.isBlackList),
+    countryBitmap: BigInt(r.countryBitmap),
   }))
 
   const vs = viewerAddresses()
@@ -669,8 +669,8 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
     allowedSubGroup: r.allowedSubGroup,
     minTier: Number(r.minTier),
     minSubTier: Number(r.minSubTier),
-    poolCountryBitmap: BigInt(r.poolCountryBitmap),
     isBlackList: Boolean(r.isBlackList),
+    countryBitmap: BigInt(r.countryBitmap),
   }))
 
   const parties = [...new Set(store.orders.map((o) => o.maker))]

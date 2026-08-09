@@ -23,8 +23,8 @@ const rule = (countries: number[], isBlackList: boolean): RuleV2 => ({
   allowedSubGroup: '0x0000',
   minTier: 0,
   minSubTier: 0,
-  poolCountryBitmap: countryBitmap(countries),
   isBlackList,
+  countryBitmap: countryBitmap(countries),
 })
 
 /**

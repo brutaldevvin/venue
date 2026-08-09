@@ -158,8 +158,8 @@ describe('differential: the matcher never forms a pair the chain refuses', () =>
           allowedSubGroup: ZERO2,
           minTier: 0,
           minSubTier,
-          poolCountryBitmap: 0n,
           isBlackList: false,
+          countryBitmap: 0n,
         },
       ])
       await send(policy, 'MockPolicy', 'setRuleV2', [
@@ -169,8 +169,8 @@ describe('differential: the matcher never forms a pair the chain refuses', () =>
           allowedSubGroup: ZERO2,
           minTier: 0,
           minSubTier: 0,
-          poolCountryBitmap: 0n,
           isBlackList: false,
+          countryBitmap: 0n,
         },
       ])
 
@@ -297,8 +297,8 @@ describe('differential: the matcher never forms a pair the chain refuses', () =>
             allowedSubGroup: ZERO2,
             minTier: 0,
             minSubTier,
-            poolCountryBitmap: 0n,
             isBlackList: false,
+            countryBitmap: 0n,
           } as RuleV2,
         ],
         limits: {

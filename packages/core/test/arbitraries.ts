@@ -26,11 +26,11 @@ export const ruleArb: fc.Arbitrary<RuleV2> = fc.record({
   allowedSubGroup: bytes2Arb,
   minTier: fc.integer({ min: 0, max: 99 }),
   minSubTier: fc.integer({ min: 0, max: 99 }),
-  poolCountryBitmap: countryArb.map((cs) =>
-    cs.reduce((m, c) => m | (1n << BigInt(c)), 0n),
-  ),
   // Both directions, so neither branch of the country clause goes unexercised.
   isBlackList: fc.boolean(),
+  countryBitmap: countryArb.map((cs) =>
+    cs.reduce((m, c) => m | (1n << BigInt(c)), 0n),
+  ),
 })
 
 export const rulesArb: fc.Arbitrary<RuleV2[]> = fc.array(ruleArb, { maxLength: 3 })
@@ -81,7 +81,7 @@ export const orderArb: fc.Arbitrary<Order> = fc
  */
 function satisfying(r: RuleV2): fc.Arbitrary<Omit<Credential, 'address'>> {
   const bits: number[] = []
-  for (let b = 0; b < 256; b++) if ((r.poolCountryBitmap >> BigInt(b)) & 1n) bits.push(b)
+  for (let b = 0; b < 256; b++) if ((r.countryBitmap >> BigInt(b)) & 1n) bits.push(b)
 
   return fc.record({
     group: fc.constant(r.allowedGroup === '0x0000' ? ('0x4344' as const) : r.allowedGroup),

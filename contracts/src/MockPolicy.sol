@@ -111,8 +111,8 @@ contract MockPolicy is IATokenPolicy {
         if (r.minTier != 0 && c.tier < r.minTier) return false;
         if (r.minSubTier != 0 && c.subTier < r.minSubTier) return false;
 
-        if (r.poolCountryBitmap != 0) {
-            bool overlaps = (c.countryBitmap & r.poolCountryBitmap) != 0;
+        if (r.countryBitmap != 0) {
+            bool overlaps = (c.countryBitmap & r.countryBitmap) != 0;
             if (r.isBlackList ? overlaps : !overlaps) return false;
         }
         return true;

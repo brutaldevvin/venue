@@ -5,18 +5,16 @@ interface IComplianceRule {
     /// @notice Within a rule the fields are AND; across `RuleV2[]` the rules are OR.
     ///         Zero (or 0x0000) means unrestricted in every field.
     ///
-    /// @dev Six fields, not five. The CCP integration guide documents five and omits
-    ///      `isBlackList`, but the deployed policy at 0xaC7e...1792 returns six words per
-    ///      rule - verified by counting the ABI words of a raw `getRulesV2` return on Monad.
-    ///      With one rule a five-field decode reads correctly by luck, because the missing
-    ///      field is last; with two or more rules every rule after the first misaligns.
+    /// @dev Complete shape confirmed by the Cleanverse team. `isBlackList` sits before
+    ///      `countryBitmap`; omitting it corrupts country handling and misaligns multi-rule
+    ///      decodes because each tuple has six ABI words, not five.
     struct RuleV2 {
         bytes2 allowedGroup;
         bytes2 allowedSubGroup;
         uint8 minTier; // 0-99
         uint8 minSubTier; // 0-99
-        uint256 poolCountryBitmap; // country membership, as an opaque bit index
         bool isBlackList; // true = deny the listed countries; false = allow only them
+        uint256 countryBitmap; // country membership, as an opaque bit index
     }
 }
 

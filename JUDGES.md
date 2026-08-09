@@ -64,11 +64,11 @@ registry yourself.
 
 ## 4. Two things we found in the deployed contracts
 
-**`RuleV2` has six fields, not five.** The integration guide documents five. Counting the ABI
-words of a raw `getRulesV2` return gives six per rule; the sixth is `isBlackList`, which
-inverts the country clause from an allow-list to a deny-list. A five-field decode reads a
-single rule correctly by luck and misaligns every rule after the first, which is exactly the
-multi-cohort case the protocol advertises.
+**`RuleV2` has six fields, not five.** The Cleanverse team confirmed the complete shape:
+`allowedGroup`, `allowedSubGroup`, `minTier`, `minSubTier`, `isBlackList`, `countryBitmap`.
+`isBlackList` inverts the country clause from an allow-list to a deny-list, and because it
+sits before `countryBitmap`, a five-field decode corrupts country handling and misaligns
+multi-rule decodes.
 
 **`canTransfer` is not at `0xaC7e5179C2C7f03f209136886c172eb34F161792`.** Extracting all 98
 selectors from that implementation shows `getRulesV2` present and `canTransfer` absent; that

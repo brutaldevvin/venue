@@ -64,9 +64,9 @@ Cleanverse integration:
 - Compliance rules come from getRulesV2 on the Cleanverse validator.
 
 Two findings from the deployed contracts:
-- RuleV2 returns six fields, not the five the integration guide documents. The sixth,
-  isBlackList, inverts the country clause from an allow-list to a deny-list. A five-field
-  decode reads one rule correctly by luck and misaligns every rule after the first.
+- The Cleanverse team confirmed RuleV2 has six fields: allowedGroup, allowedSubGroup,
+  minTier, minSubTier, isBlackList, countryBitmap. Venue decodes all six fields, including
+  the country-direction flag before the bitmap, so multi-cohort rules do not drift.
 - canTransfer is not present at the validator address 0xaC7e5179C2C7f03f209136886c172eb34F161792.
   All 98 selectors were extracted from its implementation: getRulesV2 is present, canTransfer
   is absent. The token therefore gates against an instance of the documented IATokenPolicy

@@ -75,8 +75,8 @@ async function main() {
     allowedSubGroup: '0x0000' as const,
     minTier: 0,
     minSubTier: MIN_SUB_TIER,
-    poolCountryBitmap: 0n,
     isBlackList: false,
+    countryBitmap: 0n,
   }
   for (const [label, token] of [
     ['security', security],

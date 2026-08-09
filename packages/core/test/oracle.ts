@@ -25,10 +25,10 @@ export function oracleMatchesRule(v: Credential, r: RuleV2): boolean {
   if (r.minTier !== 0 && v.tier < r.minTier) return false
   if (r.minSubTier !== 0 && v.subTier < r.minSubTier) return false
 
-  if (r.poolCountryBitmap !== 0n) {
+  if (r.countryBitmap !== 0n) {
     let hit = false
     for (let bit = 0; bit < 256; bit++) {
-      const set = (r.poolCountryBitmap >> BigInt(bit)) & 1n
+      const set = (r.countryBitmap >> BigInt(bit)) & 1n
       if (set === 1n && v.countries.includes(bit)) {
         hit = true
         break
