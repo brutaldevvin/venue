@@ -1,5 +1,6 @@
 import Console from './console'
 import { getState, type VenueState } from '@/lib/venue'
+import { readLedger, type SettlementRecord } from '@/lib/ledger'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,13 @@ export default async function Page() {
     // A dependency being down must not blank the page; the client retries on mount.
   }
 
+  let ledger: SettlementRecord[] = []
+  try {
+    ledger = await readLedger()
+  } catch {
+    // The ledger is supporting evidence, never a reason for the page to fail.
+  }
+
   // bigint is not JSON, and the client expects the same shape the API returns.
   const initial = state
     ? (JSON.parse(JSON.stringify(state, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))) as never)
@@ -33,12 +41,89 @@ export default async function Page() {
     <>
       <Console initialState={initial} />
       <Facts state={state} />
+      <Ledger records={ledger} />
     </>
   )
 }
 
 function short(a?: string) {
   return a ? `${a.slice(0, 10)}...${a.slice(-6)}` : 'unavailable'
+}
+
+/**
+ * Every settlement this demo has made, not only the current session.
+ *
+ * A visitor arriving cold should be able to see that it has worked before they got here, and
+ * that other people's runs are in the same list. The record is published to a separate public
+ * repository and each row carries the transaction, so the chain is what proves it rather than
+ * this page.
+ */
+function Ledger({ records }: { records: SettlementRecord[] }) {
+  if (records.length === 0) return null
+  const shown = records.slice(0, 12)
+  return (
+    <section className="px-8 py-8 border-t border-line">
+      <h2 className="font-ui font-bold text-indigo tracking-[-0.035em] text-[20px]">
+        Every settlement this demo has made
+      </h2>
+      <p className="mt-3 max-w-[820px] text-[14px] leading-[1.6] text-body">
+        {records.length} delivery-versus-payment settlements, each moving the security one way
+        and the cash leg the other in a single transaction. The record is published to{' '}
+        <a
+          className="text-indigo hover:underline"
+          href="https://github.com/brutaldevvin/venue-data"
+          target="_blank"
+          rel="noreferrer"
+        >
+          a public repository
+        </a>{' '}
+        as each one settles, and{' '}
+        <a className="text-indigo hover:underline" href="/api/ledger">
+          /api/ledger
+        </a>{' '}
+        re-checks them against a receipt on every request.
+      </p>
+      <div className="mt-4 border border-dashed border-line rounded-lg overflow-x-auto">
+        <table className="w-full font-mono text-[11px]">
+          <thead>
+            <tr className="text-muted">
+              <th className="text-left font-normal px-3 py-2">settled</th>
+              <th className="text-right font-normal px-3 py-2">qty</th>
+              <th className="text-right font-normal px-3 py-2">price</th>
+              <th className="text-right font-normal px-3 py-2">notional</th>
+              <th className="text-left font-normal px-3 py-2">transaction</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((r) => (
+              <tr key={r.txHash} className="border-t border-line">
+                <td className="px-3 py-2 text-muted">{r.at.slice(0, 16).replace('T', ' ')}</td>
+                <td className="px-3 py-2 text-right text-body">{r.qty}</td>
+                <td className="px-3 py-2 text-right text-indigo">{r.price}</td>
+                <td className="px-3 py-2 text-right text-body">{r.notional}</td>
+                <td className="px-3 py-2">
+                  <a
+                    className="text-indigo hover:underline"
+                    href={`https://testnet.monadscan.com/tx/${r.txHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={r.txHash}
+                  >
+                    {r.txHash.slice(0, 18)}...
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {records.length > shown.length && (
+        <p className="mt-2 font-mono text-[11px] text-muted">
+          {records.length - shown.length} older settlements in the full record.
+        </p>
+      )}
+    </section>
+  )
 }
 
 /** A plain-text account of the same state the panes render, always present in the markup. */

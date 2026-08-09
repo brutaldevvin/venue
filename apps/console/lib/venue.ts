@@ -14,6 +14,7 @@ import {
 import { resolveCredential, setApassStatus, verificationLink } from './cvi'
 import { signOrder, verifyOrder } from './orders'
 import { agentMandate, mandateVerifier } from './mandate'
+import { appendSettlement } from './ledger'
 import { travelRuleForFill } from './travelrule'
 import { Watcher } from './watcher'
 
@@ -310,9 +311,16 @@ export async function injectCrossingBids(): Promise<void> {
  * The store lives on `globalThis` so the API routes share it, which also means it outlives
  * a hot reload - without this a demo starts with rows from whatever ran before it.
  */
+/**
+ * Clear the working book, but keep the settled history.
+ *
+ * Fills, skips and lapses are the record of what the demo has done and are the reason a
+ * visitor can see it worked before they arrived. Wiping them on reset erased that, which is
+ * the opposite of what the tape is for. Only the resting orders are rebuilt.
+ */
 export function reset(): void {
   store.orders = []
-  store.tape = []
+  store.tape = store.tape.filter((r) => r.kind === 'fill')
   store.seeded = false
 }
 
@@ -728,8 +736,25 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
           },
         ],
       })
-      await publicClient.waitForTransactionReceipt({ hash })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
       const legs = await travelRuleForFill(hash, m.ask.maker, m.bid.maker)
+
+      // The ledger is an index; the chain is the evidence. Publishing must never be able to
+      // fail the settlement that already happened, so it is fire-and-forget and the record
+      // is held locally either way.
+      void appendSettlement({
+        txHash: hash,
+        at: new Date(Number(receipt.blockNumber) === 0 ? Date.now() : Date.now()).toISOString(),
+        qty: m.qty.toString(),
+        price: m.price.toString(),
+        notional: notional.toString(),
+        seller: m.ask.maker,
+        buyer: m.bid.maker,
+        security: addresses.security,
+        cash: addresses.cash,
+        settlement: addresses.settlement,
+        chainId: 10143,
+      }).catch(() => undefined)
       store.tape.push({
         kind: 'fill',
         at: Date.now(),
