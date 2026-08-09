@@ -47,7 +47,7 @@ export function rpcUrls(): string[] {
   ]
     .map((url) => url.trim())
     .filter(Boolean)
-  return [...new Set([...configured, ...MONAD_PUBLIC_RPC_URLS])]
+  return [...new Set([...MONAD_PUBLIC_RPC_URLS, ...configured])]
 }
 
 export function rpcUrl(): string {
