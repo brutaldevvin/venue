@@ -91,6 +91,9 @@ interface Store {
   hydrated: boolean
   credentialCache: Map<Address, Credential | null>
   stateCache: Map<Address, ViewerState>
+  stateSnapshot: VenueState | null
+  stateSnapshotAt: number
+  stateSnapshotInflight: Promise<VenueState> | null
 }
 const store: Store = ((globalThis as { __venue?: Store }).__venue ??= {
   tape: [],
@@ -100,7 +103,15 @@ const store: Store = ((globalThis as { __venue?: Store }).__venue ??= {
   hydrated: false,
   credentialCache: new Map(),
   stateCache: new Map(),
+  stateSnapshot: null,
+  stateSnapshotAt: 0,
+  stateSnapshotInflight: null,
 })
+
+function invalidateStateSnapshot(): void {
+  store.stateSnapshot = null
+  store.stateSnapshotAt = 0
+}
 
 const DEMO_RULES: RuleV2[] = [
   {
@@ -127,9 +138,13 @@ const chainSnapshot: ChainSnapshot = ((globalThis as {
   maxHolders: 5n,
 })
 
+const chainRuntime: { inFlight: Promise<ChainSnapshot> | null; lastAttemptAt: number } = ((globalThis as {
+  __venueChainRuntime?: { inFlight: Promise<ChainSnapshot> | null; lastAttemptAt: number }
+}).__venueChainRuntime ??= { inFlight: null, lastAttemptAt: 0 })
+
 function sanitizedError(e: unknown): string {
   const message = e instanceof Error ? e.message : String(e)
-  return message.replace(/https?:\/\/\S+/g, '[url]').slice(0, 180)
+  return message.replace(/https?:\/\/\S+/g, '[url]').replace(/\s+/g, ' ').slice(0, 180)
 }
 
 async function withTimeout<T>(label: string, work: Promise<T>, timeoutMs = 3500): Promise<T> {
@@ -148,7 +163,7 @@ async function withTimeout<T>(label: string, work: Promise<T>, timeoutMs = 3500)
 
 async function readCached<T>(label: string, work: Promise<T>, cached: T): Promise<T> {
   try {
-    return await withTimeout(label, work)
+    return await withTimeout(label, work, 1500)
   } catch (e) {
     console.warn(`[venue] ${label} unavailable; using cached value: ${sanitizedError(e)}`)
     return cached
@@ -166,7 +181,7 @@ function normalizeRules(rules: readonly RuleV2[]): RuleV2[] {
   }))
 }
 
-async function readRulesAndLimits(): Promise<ChainSnapshot> {
+async function refreshRulesAndLimits(): Promise<ChainSnapshot> {
   const [rules, holderCount, maxHolders] = await Promise.all([
     readCached(
       'getRulesV2',
@@ -204,6 +219,18 @@ async function readRulesAndLimits(): Promise<ChainSnapshot> {
   return chainSnapshot
 }
 
+async function readRulesAndLimits(): Promise<ChainSnapshot> {
+  const now = Date.now()
+  if (chainRuntime.inFlight) return chainRuntime.inFlight
+  if (now - chainRuntime.lastAttemptAt < 30_000) return chainSnapshot
+
+  chainRuntime.lastAttemptAt = now
+  chainRuntime.inFlight = refreshRulesAndLimits().finally(() => {
+    chainRuntime.inFlight = null
+  })
+  return chainRuntime.inFlight
+}
+
 /**
  * The watcher runs for the life of the process, pulling orders whose maker's credential has
  * lapsed. Started lazily on first read so there is no separate process to run.
@@ -215,6 +242,7 @@ function ensureWatching(): Watcher {
     resolve: (maker) => readCredential(maker),
     cancel: (maker, ids, reason) => {
       store.orders = store.orders.filter((o) => !ids.includes(o.id))
+      invalidateStateSnapshot()
       store.tape.push({
         kind: 'lapse',
         at: Date.now(),
@@ -305,13 +333,17 @@ function demoViewerState(who: Address): ViewerState {
  * projecting against numbers we had invented. It now resolves the live A-Pass, so the tier
  * and sub-tier on screen are the ones Cleanverse holds for that wallet.
  */
-async function readCredential(who: Address): Promise<Credential | null> {
+async function readCredential(
+  who: Address,
+  options: { fallback: boolean } = { fallback: true },
+): Promise<Credential | null> {
   try {
     const credential = await withTimeout(`query_apass ${who}`, resolveCredential(who), 2500)
     store.credentialCache.set(who, credential)
     return credential
   } catch (e) {
     console.warn(`[venue] credential unavailable; using cached value: ${sanitizedError(e)}`)
+    if (!options.fallback) throw e
     if (store.credentialCache.has(who)) return store.credentialCache.get(who) ?? null
     const fallback = demoCredential(who)
     if (fallback !== undefined) return fallback
@@ -349,6 +381,8 @@ async function readViewerState(
   who: Address,
   options: { fallback: boolean } = { fallback: true },
 ): Promise<ViewerState> {
+  if (options.fallback) return store.stateCache.get(who) ?? demoViewerState(who)
+
   try {
     const [position, allowance, cashBalance, cashAllowance] = await Promise.all([
       withTimeout(
@@ -448,6 +482,7 @@ async function seedBook(): Promise<void> {
     )
   }
   store.orders = made
+  invalidateStateSnapshot()
 }
 
 /**
@@ -486,6 +521,7 @@ export async function injectCrossingBids(): Promise<void> {
     )
     if (!already.has(o.id)) store.orders.push(o)
   }
+  invalidateStateSnapshot()
 }
 
 /**
@@ -505,6 +541,7 @@ export function reset(): void {
   store.orders = []
   store.tape = store.tape.filter((r) => r.kind === 'fill')
   store.seeded = false
+  invalidateStateSnapshot()
 }
 
 /**
@@ -675,6 +712,7 @@ export async function addOrder(o: Order): Promise<{ ok: boolean; reason?: string
     return { ok: false, reason: 'signature does not recover to maker' }
   }
   store.orders.push(o)
+  invalidateStateSnapshot()
   return { ok: true }
 }
 
@@ -710,6 +748,23 @@ async function hydrateTape(): Promise<void> {
 }
 
 export async function getState(): Promise<VenueState> {
+  const now = Date.now()
+  if (store.stateSnapshot && now - store.stateSnapshotAt < 1_500) return store.stateSnapshot
+  if (store.stateSnapshotInflight) return store.stateSnapshotInflight
+
+  store.stateSnapshotInflight = buildState()
+    .then((state) => {
+      store.stateSnapshot = state
+      store.stateSnapshotAt = Date.now()
+      return state
+    })
+    .finally(() => {
+      store.stateSnapshotInflight = null
+    })
+  return store.stateSnapshotInflight
+}
+
+async function buildState(): Promise<VenueState> {
   await seedBook()
   await hydrateTape()
   ensureWatching()
@@ -752,7 +807,14 @@ export async function getState(): Promise<VenueState> {
   await Promise.all(
     vs
       .filter((v) => (creds.get(v.address) ?? null) === null)
-      .map(async (v) => links.set(v.address, await verificationLink(v.address, addresses.security))),
+      .map(async (v) =>
+        links.set(
+          v.address,
+          await withTimeout(`verify_apass ${v.address}`, verificationLink(v.address, addresses.security), 1500).catch(
+            () => undefined,
+          ),
+        ),
+      ),
   )
 
   const viewers: ViewerView[] = vs.map((v) => {
@@ -807,7 +869,7 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
   const states = new Map<Address, ViewerState>()
   await Promise.all(
     parties.map(async (p) => {
-      creds.set(p, await readCredential(p))
+      creds.set(p, await readCredential(p, { fallback: false }))
       states.set(p, await readViewerState(p, { fallback: false }))
     }),
   )
@@ -940,6 +1002,7 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
     }
   }
 
+  invalidateStateSnapshot()
   return { matched: matches.length, skipped: skips.length }
 }
 
@@ -977,5 +1040,6 @@ export async function lapseMaker(): Promise<{
   // Sweep immediately rather than waiting for the next tick, so the demo is responsive.
   // That the watcher owns the cancellation is what makes this a watcher and not a button.
   const { cancelled } = await ensureWatching().sweep()
+  invalidateStateSnapshot()
   return { maker: target.maker, cancelled, frozen }
 }

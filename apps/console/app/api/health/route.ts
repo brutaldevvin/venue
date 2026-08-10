@@ -40,7 +40,7 @@ function addressOf(envKey: string): string | null {
   }
 }
 
-async function bounded<T>(work: Promise<T>, timeoutMs = 2_500): Promise<T> {
+async function bounded<T>(work: Promise<T>, timeoutMs = 1_500): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([

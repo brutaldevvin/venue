@@ -2,6 +2,20 @@ import { getState } from '@/lib/venue'
 
 export const dynamic = 'force-dynamic'
 
+async function bounded<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 /**
  * A plain-text brief for anything reading this without a browser.
  *
@@ -13,7 +27,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   let s: Awaited<ReturnType<typeof getState>> | null = null
   try {
-    s = await getState()
+    s = await bounded(getState(), 5_000)
   } catch {
     /* fall through to the static portion */
   }
