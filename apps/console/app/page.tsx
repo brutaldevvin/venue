@@ -4,6 +4,20 @@ import { readLedger, type SettlementRecord } from '@/lib/ledger'
 
 export const dynamic = 'force-dynamic'
 
+async function bounded<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 /**
  * The route is a server component so the page has real content before any JavaScript runs.
  *
@@ -20,14 +34,14 @@ export const dynamic = 'force-dynamic'
 export default async function Page() {
   let state: VenueState | null = null
   try {
-    state = await getState()
+    state = await bounded(getState(), 5_000)
   } catch {
     // A dependency being down must not blank the page; the client retries on mount.
   }
 
   let ledger: SettlementRecord[] = []
   try {
-    ledger = await readLedger()
+    ledger = await bounded(readLedger(), 2_500)
   } catch {
     // The ledger is supporting evidence, never a reason for the page to fail.
   }

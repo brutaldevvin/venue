@@ -40,6 +40,20 @@ function addressOf(envKey: string): string | null {
   }
 }
 
+async function bounded<T>(work: Promise<T>, timeoutMs = 2_500): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`timed out after ${timeoutMs}ms`)), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 export async function GET(req: Request) {
   const chain = process.env.CHAIN ?? 'monad'
   const cv = client()
@@ -50,27 +64,29 @@ export async function GET(req: Request) {
     { key: 'C', role: 'unverified', address: addressOf('FACILITATOR_PKEY') },
   ]
 
+  const agent = addressOf('FACILITATOR_PKEY')
+
   const settled = await Promise.allSettled([
-    publicClient.getBlockNumber(),
-    publicClient.readContract({
+    bounded(publicClient.getBlockNumber()),
+    bounded(publicClient.readContract({
       address: addresses.security,
       abi: listedAbi,
       functionName: 'holderCount',
-    }),
-    publicClient.readContract({
+    })),
+    bounded(publicClient.readContract({
       address: addresses.security,
       abi: listedAbi,
       functionName: 'maxHolders',
-    }),
-    publicClient.readContract({
+    })),
+    bounded(publicClient.readContract({
       address: addresses.policy,
       abi: policyAbi,
       functionName: 'getRulesV2',
       args: [addresses.security],
-    }),
-    publicClient.getBalance({ address: addressOf('FACILITATOR_PKEY') as `0x${string}` }),
+    })),
+    agent ? bounded(publicClient.getBalance({ address: agent as `0x${string}` })) : Promise.resolve(null),
     ...viewers.map((v) =>
-      v.address ? cv.queryApass({ chain, address: v.address }) : Promise.resolve(null),
+      v.address ? bounded(cv.queryApass({ chain, address: v.address })) : Promise.resolve(null),
     ),
   ])
 

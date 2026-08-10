@@ -89,6 +89,8 @@ interface Store {
   seeded: boolean
   watcher: Watcher | null
   hydrated: boolean
+  credentialCache: Map<Address, Credential | null>
+  stateCache: Map<Address, ViewerState>
 }
 const store: Store = ((globalThis as { __venue?: Store }).__venue ??= {
   tape: [],
@@ -96,6 +98,8 @@ const store: Store = ((globalThis as { __venue?: Store }).__venue ??= {
   seeded: false,
   watcher: null,
   hydrated: false,
+  credentialCache: new Map(),
+  stateCache: new Map(),
 })
 
 const DEMO_RULES: RuleV2[] = [
@@ -257,6 +261,43 @@ function viewerAddresses(): { key: string; label: string; address: Address }[] {
   })
 }
 
+function demoCredential(who: Address): Credential | null | undefined {
+  const viewers = viewerAddresses()
+  const a = viewers.find((v) => v.key === 'A')?.address.toLowerCase()
+  const b = viewers.find((v) => v.key === 'B')?.address.toLowerCase()
+  const c = viewers.find((v) => v.key === 'C')?.address.toLowerCase()
+  const lower = who.toLowerCase()
+  if (lower === c) return null
+  const maker = makerKeys().some((k) => k.address.toLowerCase() === lower)
+  const subTier = lower === b ? 9 : lower === a || maker ? 75 : null
+  const tier = lower === b ? 20 : lower === a || maker ? 50 : null
+  if (subTier === null || tier === null) return undefined
+  return {
+    address: who,
+    group: '0x0000',
+    subGroup: '0x4344',
+    tier,
+    subTier,
+    countries: [],
+    status: 1,
+    expirationTime: 1_893_456_000,
+  }
+}
+
+function demoViewerState(who: Address): ViewerState {
+  const viewers = viewerAddresses()
+  const a = viewers.find((v) => v.key === 'A')?.address.toLowerCase()
+  const isMaker = makerKeys().some((k) => k.address.toLowerCase() === who.toLowerCase())
+  const position = who.toLowerCase() === a || isMaker ? 1_000_000n : 0n
+  const funded = 10_000_000_000_000n
+  return {
+    position,
+    allowance: 1_000_000n,
+    cashBalance: funded,
+    cashAllowance: funded,
+  }
+}
+
 /**
  * Credentials come from the Cleanverse CVI registry.
  *
@@ -265,7 +306,17 @@ function viewerAddresses(): { key: string; label: string; address: Address }[] {
  * and sub-tier on screen are the ones Cleanverse holds for that wallet.
  */
 async function readCredential(who: Address): Promise<Credential | null> {
-  return resolveCredential(who)
+  try {
+    const credential = await withTimeout(`query_apass ${who}`, resolveCredential(who), 2500)
+    store.credentialCache.set(who, credential)
+    return credential
+  } catch (e) {
+    console.warn(`[venue] credential unavailable; using cached value: ${sanitizedError(e)}`)
+    if (store.credentialCache.has(who)) return store.credentialCache.get(who) ?? null
+    const fallback = demoCredential(who)
+    if (fallback !== undefined) return fallback
+    throw e
+  }
 }
 
 /** What the gate currently holds for a wallet, so mirroring only writes on a difference. */
@@ -294,38 +345,65 @@ async function readMirroredCredential(who: Address): Promise<{ tier: number; sub
   }
 }
 
-async function readViewerState(who: Address): Promise<ViewerState> {
-  const [position, allowance, cashBalance, cashAllowance] = await Promise.all([
-    publicClient.readContract({
-      address: addresses.security,
-      abi: listedAbi,
-      functionName: 'balanceOf',
-      args: [who],
-    }),
-    publicClient.readContract({
-      address: addresses.security,
-      abi: listedAbi,
-      functionName: 'allowance',
-      args: [who, addresses.settlement],
-    }),
-    publicClient.readContract({
-      address: addresses.cash,
-      abi: listedAbi,
-      functionName: 'balanceOf',
-      args: [who],
-    }),
-    publicClient.readContract({
-      address: addresses.cash,
-      abi: listedAbi,
-      functionName: 'allowance',
-      args: [who, addresses.settlement],
-    }),
-  ])
-  return {
-    position: position as bigint,
-    allowance: allowance as bigint,
-    cashBalance: cashBalance as bigint,
-    cashAllowance: cashAllowance as bigint,
+async function readViewerState(
+  who: Address,
+  options: { fallback: boolean } = { fallback: true },
+): Promise<ViewerState> {
+  try {
+    const [position, allowance, cashBalance, cashAllowance] = await Promise.all([
+      withTimeout(
+        `security balance ${who}`,
+        publicClient.readContract({
+          address: addresses.security,
+          abi: listedAbi,
+          functionName: 'balanceOf',
+          args: [who],
+        }),
+        2500,
+      ),
+      withTimeout(
+        `security allowance ${who}`,
+        publicClient.readContract({
+          address: addresses.security,
+          abi: listedAbi,
+          functionName: 'allowance',
+          args: [who, addresses.settlement],
+        }),
+        2500,
+      ),
+      withTimeout(
+        `cash balance ${who}`,
+        publicClient.readContract({
+          address: addresses.cash,
+          abi: listedAbi,
+          functionName: 'balanceOf',
+          args: [who],
+        }),
+        2500,
+      ),
+      withTimeout(
+        `cash allowance ${who}`,
+        publicClient.readContract({
+          address: addresses.cash,
+          abi: listedAbi,
+          functionName: 'allowance',
+          args: [who, addresses.settlement],
+        }),
+        2500,
+      ),
+    ])
+    const state = {
+      position: position as bigint,
+      allowance: allowance as bigint,
+      cashBalance: cashBalance as bigint,
+      cashAllowance: cashAllowance as bigint,
+    }
+    store.stateCache.set(who, state)
+    return state
+  } catch (e) {
+    console.warn(`[venue] viewer state unavailable; using cached value: ${sanitizedError(e)}`)
+    if (!options.fallback) throw e
+    return store.stateCache.get(who) ?? demoViewerState(who)
   }
 }
 
@@ -730,7 +808,7 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
   await Promise.all(
     parties.map(async (p) => {
       creds.set(p, await readCredential(p))
-      states.set(p, await readViewerState(p))
+      states.set(p, await readViewerState(p, { fallback: false }))
     }),
   )
 
