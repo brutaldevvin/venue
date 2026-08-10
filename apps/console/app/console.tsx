@@ -119,31 +119,47 @@ export default function Console({ initialState }: { initialState: State | null }
   const prevBound = useRef<Set<string>>(new Set())
   /** Beat 1 is that the three books are *already* different. Nothing flashes on first paint. */
   const seenFirstLoad = useRef(initialState !== null)
+  const hasUsableState = useRef(initialState !== null)
+  const consecutiveFailures = useRef(0)
+  const loading = useRef(false)
+
+  const showLoadFailure = useCallback((message: string) => {
+    consecutiveFailures.current += 1
+    if (hasUsableState.current) return
+    if (consecutiveFailures.current >= 2) setError(message)
+  }, [])
 
   const load = useCallback(async () => {
+    if (loading.current) return
+    loading.current = true
     try {
       const res = await fetch('/api/state', { cache: 'no-store' })
       const json = (await res.json()) as State & { error?: string }
-      if (json.error) setError(json.error)
-      else {
-        const bound = new Set<string>()
-        for (const v of json.viewers) {
-          for (const b of v.bound) bound.add(`${v.key}:${b.reason}`)
-          if (v.refusal) bound.add(`${v.key}:${v.refusal.reason}`)
-        }
-        const justFired = seenFirstLoad.current
-          ? new Set([...bound].filter((k) => !prevBound.current.has(k)))
-          : new Set<string>()
-        seenFirstLoad.current = true
-        prevBound.current = bound
-        setFiring(justFired)
-        setState(json)
-        setError(null)
+      if (json.error) {
+        showLoadFailure(json.error)
+        return
       }
+      const bound = new Set<string>()
+      for (const v of json.viewers) {
+        for (const b of v.bound) bound.add(`${v.key}:${b.reason}`)
+        if (v.refusal) bound.add(`${v.key}:${v.refusal.reason}`)
+      }
+      const justFired = seenFirstLoad.current
+        ? new Set([...bound].filter((k) => !prevBound.current.has(k)))
+        : new Set<string>()
+      seenFirstLoad.current = true
+      prevBound.current = bound
+      setFiring(justFired)
+      setState(json)
+      hasUsableState.current = true
+      consecutiveFailures.current = 0
+      setError(null)
     } catch {
-      setError('state temporarily unavailable; retrying')
+      showLoadFailure('state temporarily unavailable; retrying')
+    } finally {
+      loading.current = false
     }
-  }, [])
+  }, [showLoadFailure])
 
   // Polling at 1s is sufficient for a demo and removes a whole class of bug.
   useEffect(() => {
