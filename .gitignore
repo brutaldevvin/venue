@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.next/
+out/
+.env
+.env.*
+!.env.example
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+# Cloned rather than submoduled, since the repo is not initialised until the window opens.
+# Restore with: git clone --depth 1 -b v5.1.0 https://github.com/OpenZeppelin/openzeppelin-contracts lib/openzeppelin-contracts
+contracts/lib/
+*.log
+.DS_Store
+.venue-makers.json

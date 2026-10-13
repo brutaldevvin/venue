@@ -1,0 +1,11 @@
+{
+  "name": "@venue/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Venue domain logic: RuleV2 evaluation, per-viewer book projection, venue-side limits.",
+  "exports": { ".": "./src/index.ts" },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": { "test": "vitest run" }
+}
