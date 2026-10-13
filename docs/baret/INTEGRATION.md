@@ -1,8 +1,5 @@
 # Baret integration and review
 
-Reviewed and tested on 2026-10-13. Working copy: `/home/birch/repos/venue-baret`, branch `feat/baret-guard`.
-The source copy at `/media/birch/Extreme SSD/repos/venue` had no `.git` directory. With user approval, a separate repository was created from its source, excluding `.env`, maker keys, dependencies and generated artifacts. Its baseline commit is `b0a54c7`; it does not inherit an upstream Git history or remote. The original copy was not modified.
-
 ## Signing boundaries
 
 Original source locations before this change:
