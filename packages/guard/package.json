@@ -1,0 +1,13 @@
+{
+  "name": "@venue/guard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@baret/guard": "0.1.2",
+    "viem": "^2.52.2"
+  }
+}

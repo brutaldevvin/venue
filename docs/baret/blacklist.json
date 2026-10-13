@@ -1,0 +1,85 @@
+{
+  "request": {
+    "network": "testnet",
+    "transaction": {
+      "from": "0x306707be3CD50B1Cca5E27F838AfcfC4fD84C353",
+      "to": "0xac9517a70c88480c9fA7E9a280DA485F7f552C29",
+      "value": "100000000000000000",
+      "data": "0x"
+    },
+    "policyTemplate": "balanced"
+  },
+  "verdict": {
+    "decision": "blocked",
+    "findings": [
+      {
+        "code": "KNOWN_MALICIOUS_ADDRESS",
+        "severity": "critical",
+        "values": {
+          "address": "0xac9517a70c88480c9fA7E9a280DA485F7f552C29"
+        },
+        "blocking": true,
+        "details": {
+          "registry": {
+            "severity": 4,
+            "reasonCode": "DRAINER_SINK"
+          },
+          "nansen": false
+        }
+      }
+    ],
+    "firedRules": [
+      {
+        "rule": "blockKnownMalicious",
+        "code": "KNOWN_MALICIOUS_ADDRESS",
+        "limit": null,
+        "actual": null
+      }
+    ],
+    "suggestions": [],
+    "confidence": "high",
+    "estimatedChanges": [
+      {
+        "account": "0x306707be3CD50B1Cca5E27F838AfcfC4fD84C353",
+        "asset": {
+          "kind": "native",
+          "address": null,
+          "symbol": "MON",
+          "decimals": 18
+        },
+        "before": "10159120864000000000",
+        "after": "10056978864000000000",
+        "delta": "-102142000000000000"
+      }
+    ],
+    "approvals": [],
+    "sources": [
+      {
+        "name": "alchemy",
+        "status": "ok"
+      },
+      {
+        "name": "nansen",
+        "status": "ok"
+      },
+      {
+        "name": "reputation-registry",
+        "status": "ok"
+      },
+      {
+        "name": "cleanverse",
+        "status": "skipped"
+      }
+    ],
+    "expiresAt": "2026-10-13T16:58:59.000Z",
+    "meta": {
+      "requestId": "d649f2a2-f27f-4c33-bce7-7d1a75ee717b",
+      "analysisVersion": "1",
+      "network": "testnet",
+      "chainId": 10143,
+      "analyzedAt": "2026-10-13T16:57:29.000Z",
+      "blockNumber": "70734752",
+      "traced": true
+    }
+  }
+}

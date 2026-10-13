@@ -8,6 +8,8 @@
  * two participants and we hold three funded keys; they carry the same eligibility as viewer
  * A, so they add depth without adding a second compliance story.
  */
+import { guardedAccount } from '@venue/guard'
+import { confirmCaution } from './lib/guard'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { formatEther, keccak256, parseEther, toHex } from 'viem'
@@ -131,7 +133,7 @@ async function main() {
     const mw = { ...w, account: m }
     for (const token of [security, cash]) {
       const hash = await mw.writeContract({
-        account: m,
+        account: guardedAccount(m, confirmCaution),
         address: token,
         abi: listedAbi,
         functionName: 'approve',

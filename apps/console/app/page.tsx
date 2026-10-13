@@ -59,6 +59,8 @@ export default function Page() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [runError, setRunError] = useState<string | null>(null)
+
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/state', { cache: 'no-store' })
@@ -83,12 +85,31 @@ export default function Page() {
   const run = async (action: 'match' | 'lapse' | 'cross') => {
     setBusy(true)
     try {
-      await fetch('/api/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      })
+      setRunError(null)
+      let confirmation: string | undefined
+      while (true) {
+        const res = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, confirmation }),
+        })
+        const result = await res.json()
+        if (result.guard?.decision === 'caution') {
+          const reasons = result.guard.findings.map((f: { code: string; values: Record<string, string> }) => `${f.code}: ${JSON.stringify(f.values)}`).join('\n')
+          const transaction = JSON.stringify(result.guard.transaction, null, 2)
+          if (!window.confirm(`Baret caution:\n${reasons}\n\n${transaction}\n\nContinue and sign this transaction?`)) {
+            setRunError(`Transaction not signed. Baret caution: ${reasons}`)
+            break
+          }
+          confirmation = result.guard.confirmation
+          continue
+        }
+        if (!res.ok) throw new Error(result.error || 'Transaction action failed')
+        break
+      }
       await load()
+    } catch (e) {
+      setRunError((e as Error).message)
     } finally {
       setBusy(false)
     }
@@ -98,9 +119,9 @@ export default function Page() {
     <main className="min-h-screen flex flex-col">
       <Chrome state={state} />
 
-      {error && (
+      {(runError || error) && (
         <div className="px-8 py-3 font-mono text-[11px] text-bound border-b border-line">
-          {error}
+          {runError || error}
         </div>
       )}
 

@@ -1,3 +1,4 @@
+import { guardedAccount, guardError, type ConfirmCaution } from '@venue/guard'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Address, BookState, Credential, Order, RuleV2, ViewerState } from '@venue/core'
@@ -327,7 +328,7 @@ export async function getState(): Promise<VenueState> {
 }
 
 /** Run the matcher and settle whatever it forms. The demo's beats 2 and 4. */
-export async function runAndSettle(): Promise<{ matched: number; skipped: number }> {
+export async function runAndSettle(confirm?: ConfirmCaution): Promise<{ matched: number; skipped: number }> {
   await seedBook()
 
   const [rules, holderCount, maxHolders] = await Promise.all([
@@ -398,7 +399,7 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
   const raw = process.env.FACILITATOR_PKEY ?? ''
   const agent = privateKeyToAccount((raw.startsWith('0x') ? raw : `0x${raw}`) as `0x${string}`)
   const wallet = createWalletClient({
-    account: agent,
+    account: guardedAccount(agent, confirm),
     chain: monadTestnet,
     transport: http(process.env.MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz'),
   })
@@ -429,6 +430,8 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
       })
       store.orders = store.orders.filter((o) => o.id !== m.bid.id && o.id !== m.ask.id)
     } catch (e) {
+      const refusal = guardError(e)
+      if (refusal) throw refusal
       store.tape.push({
         kind: 'refusal',
         at: Date.now(),
@@ -442,7 +445,7 @@ export async function runAndSettle(): Promise<{ matched: number; skipped: number
 }
 
 /** Beat 3: a resting maker's credential lapses and their order leaves the book. */
-export async function lapseMaker(): Promise<{ maker: Address | null }> {
+export async function lapseMaker(confirm?: ConfirmCaution): Promise<{ maker: Address | null }> {
   await seedBook()
   const target = store.orders.find((o) => o.side === 'ask')
   if (!target) return { maker: null }
@@ -450,7 +453,7 @@ export async function lapseMaker(): Promise<{ maker: Address | null }> {
   const raw = process.env.W_PKEY ?? ''
   const owner = privateKeyToAccount((raw.startsWith('0x') ? raw : `0x${raw}`) as `0x${string}`)
   const wallet = createWalletClient({
-    account: owner,
+    account: guardedAccount(owner, confirm),
     chain: monadTestnet,
     transport: http(process.env.MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz'),
   })

@@ -1,3 +1,5 @@
+import { guardedAccount } from '@venue/guard'
+import { confirmCaution } from './guard'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -49,7 +51,7 @@ export function account(pkeyEnv: string) {
 
 export function walletClient(pkeyEnv: string) {
   return createWalletClient({
-    account: account(pkeyEnv),
+    account: guardedAccount(account(pkeyEnv), confirmCaution),
     chain: monadTestnet,
     transport: http(rpcUrl()),
   })
